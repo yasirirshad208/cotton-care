@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { LogOut, User, Settings } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils'; // Import the cn function
 
 interface UserNavProps {
   iconOnly?: boolean;

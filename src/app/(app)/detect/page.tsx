@@ -19,6 +19,7 @@ import { UploadCloud, Leaf, AlertCircle, Activity, CheckCircle, XCircle, FlaskCo
 import Image from 'next/image';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils'; // Import cn
 
 // Mock available products - Replace with actual data source
 const MOCK_PRODUCTS = [
@@ -28,12 +29,23 @@ const MOCK_PRODUCTS = [
   { id: 'prod4', name: 'Systemic Fungicide X', description: 'Provides systemic protection against various fungal issues.', suitableFor: ['Powdery mildew', 'Target spot'] },
 ];
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+
+// Updated schema to avoid server-side FileList error
 const FormSchema = z.object({
-  image: z
-    .instanceof(FileList)
-    .refine((files) => files?.length === 1, 'Image is required.')
-    .refine((files) => files?.[0]?.type.startsWith('image/'), 'Must be an image file.')
-    .refine((files) => files?.[0]?.size <= 5 * 1024 * 1024, `Max file size is 5MB.`), // 5MB limit
+  image: z.any()
+    // Check if it's a FileList on the client, skip on server
+    .refine((val) => typeof window === 'undefined' || val instanceof FileList, {
+      message: "Input must be a file selection.",
+    })
+    .refine((files) => files?.length === 1, 'Image is required.') // Should have exactly one file
+    .transform((files) => files[0] as File) // Get the single file from FileList
+    .refine((file) => file?.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
+    .refine(
+      (file) => ACCEPTED_IMAGE_TYPES.includes(file?.type),
+      "Only .jpg, .jpeg, .png, .webp, and .gif formats are supported."
+    ),
 });
 
 type DetectionResult = {
@@ -53,20 +65,24 @@ export default function DetectPage() {
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
+    mode: "onChange", // Validate on change for better UX with file input
   });
 
+  const { register, setValue } = form; // Get register and setValue
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      setValue('image', files, { shouldValidate: true }); // Update form state with FileList
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
-      form.setValue('image', event.target.files); // Update form state
     } else {
       setPreview(null);
-      form.resetField('image'); // Reset form state if no file
+      setValue('image', null, { shouldValidate: true }); // Reset form state if no file
     }
      setResult(null); // Clear previous results on new file selection
      setError(null);
@@ -77,7 +93,14 @@ export default function DetectPage() {
     setError(null);
     setResult(null);
 
-    const imageFile = data.image[0];
+    const imageFile = data.image; // data.image is now a File object due to transform
+
+    if (!imageFile) {
+        setError("No image file provided after validation.");
+        setIsLoading(false);
+        return;
+    }
+
 
     try {
       console.log("Calling predictCottonDisease...");
@@ -162,7 +185,7 @@ export default function DetectPage() {
               <FormField
                 control={form.control}
                 name="image"
-                render={({ field }) => (
+                render={({ fieldState }) => ( // Use fieldState to access error
                   <FormItem>
                     <FormLabel>Upload Image</FormLabel>
                     <FormControl>
@@ -171,7 +194,7 @@ export default function DetectPage() {
                           htmlFor="dropzone-file"
                           className={cn(
                             "flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted transition-colors",
-                            form.formState.errors.image ? "border-destructive" : "border-input"
+                            fieldState.error ? "border-destructive" : "border-input" // Use fieldState.error
                           )}
                         >
                           {preview ? (
@@ -195,12 +218,14 @@ export default function DetectPage() {
                               </p>
                             </div>
                           )}
+                          {/* Use register and manual onChange */}
                           <Input
                             id="dropzone-file"
                             type="file"
                             accept="image/*"
                             className="hidden"
-                            onChange={handleFileChange}
+                            {...register("image")} // Register the input
+                            onChange={handleFileChange} // Use manual handler
                             disabled={isLoading}
                           />
                         </label>
@@ -211,7 +236,7 @@ export default function DetectPage() {
                 )}
               />
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading || !form.formState.isValid}>
                 {isLoading ? (
                   <>
                     <Activity className="mr-2 h-4 w-4 animate-spin" />
