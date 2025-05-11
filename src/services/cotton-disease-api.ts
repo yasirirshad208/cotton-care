@@ -16,7 +16,7 @@ export type CottonDisease =
  * Represents the structure of the response from the prediction API.
  */
 interface ApiPredictionResponse {
-   class: string; // The API returns the disease name in the 'class' field
+  predicted_class: string; // The API returns the disease name in the 'class' field
    confidence: number; // The API might return a confidence score
 }
 
@@ -68,7 +68,7 @@ export async function predictCottonDisease(image: File): Promise<PredictionRespo
     console.log("API Response Data:", data);
 
      // Validate and map the API response class to our known CottonDisease types
-     const detectedClass = data.class;
+     const detectedClass = data.predicted_class;
      let mappedDisease: CottonDisease | null = null;
 
      const knownDiseases: CottonDisease[] = [
