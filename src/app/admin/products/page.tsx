@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -21,55 +22,53 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { getProducts, deleteProduct as deleteProductApi, Product as ApiProduct } from '@/services/product-api';
 
 
-// Mock product data - Replace with actual API call/data fetching
-const MOCK_PRODUCTS = [
-  { id: 'prod1', name: 'Neem Oil Spray', category: 'Organic', price: 15.99, stock: 50, image: 'https://picsum.photos/100/100?random=1' },
-  { id: 'prod2', name: 'Bacillus Thuringiensis (Bt)', category: 'Biological', price: 22.50, stock: 30, image: 'https://picsum.photos/100/100?random=3' },
-  { id: 'prod3', name: 'Copper Fungicide', category: 'Chemical', price: 18.00, stock: 100, image: 'https://picsum.photos/100/100?random=5' },
-  { id: 'prod4', name: 'Systemic Fungicide X', category: 'Chemical', price: 25.00, stock: 0, image: 'https://picsum.photos/100/100?random=7' },
-  { id: 'prod5', name: 'Insecticidal Soap', category: 'Organic', price: 12.99, stock: 75, image: 'https://picsum.photos/100/100?random=9' },
-  { id: 'prod6', name: 'General Purpose Fertilizer', category: 'Fertilizer', price: 19.99, stock: 150, image: 'https://picsum.photos/100/100?random=11' },
-];
-
-interface Product {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  stock: number;
-  image: string; // Assuming a single primary image for the admin list
+interface Product extends ApiProduct {
+  // local image representation if different from ApiProduct
+  // for this case, ApiProduct already has images: string[]
+  // we'll use images[0] for the list display
 }
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null); // Store ID of product being deleted
   const { toast } = useToast();
 
   useEffect(() => {
-    // Simulate fetching products
-    const timer = setTimeout(() => {
-      setProducts(MOCK_PRODUCTS);
-      setIsLoading(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedProducts = await getProducts(); // Using the API function
+        setProducts(fetchedProducts);
+      } catch (error) {
+        console.error("Failed to fetch products:", error);
+        toast({ title: "Error", description: "Could not load products.", variant: "destructive" });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProducts();
+  }, [toast]);
 
-  const handleDeleteProduct = (productId: string, productName: string) => {
-      // Simulate API call to delete
-      console.log(`Deleting product ${productId}`);
-      setIsLoading(true); // You might want finer-grained loading state per row
-      setTimeout(() => {
+  const handleDeleteProduct = async (productId: string, productName: string) => {
+      setIsDeleting(productId);
+      try {
+           await deleteProductApi(productId); // Using the API function
            setProducts(prev => prev.filter(p => p.id !== productId));
            toast({
                title: "Product Deleted",
                description: `${productName} has been successfully deleted.`,
            });
-           setIsLoading(false);
-      }, 800)
-
+      } catch (error) {
+          console.error(`Failed to delete product ${productId}:`, error);
+          toast({ title: "Error", description: `Could not delete ${productName}.`, variant: "destructive"});
+      } finally {
+        setIsDeleting(null);
+      }
   };
 
   if (isLoading && products.length === 0) {
@@ -136,11 +135,11 @@ export default function AdminProductsPage() {
                  </TableRow>
                </TableHeader>
                <TableBody>
-                 {isLoading && products.length > 0 ? (
-                     // Skeleton rows while loading updates
+                 {isLoading && products.length > 0 && isDeleting === null ? ( // Show skeleton only if main loading, not during delete
                      [...Array(3)].map((_, i) => (
                        <TableRow key={`loading-${i}`}>
-                          {[...Array(6)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
+                          <TableCell className="hidden sm:table-cell"><Skeleton className="h-10 w-10 rounded" /></TableCell>
+                          {[...Array(5)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
                        </TableRow>
                      ))
                   ) : (
@@ -148,7 +147,7 @@ export default function AdminProductsPage() {
                        <TableRow key={product.id}>
                          <TableCell className="hidden sm:table-cell">
                            <Image
-                             src={product.image}
+                             src={product.images && product.images.length > 0 ? product.images[0] : 'https://picsum.photos/100/100?random=0'} // Fallback
                              alt={product.name}
                              width={40}
                              height={40}
@@ -170,7 +169,7 @@ export default function AdminProductsPage() {
                            <AlertDialog>
                              <DropdownMenu>
                                <DropdownMenuTrigger asChild>
-                                 <Button variant="ghost" size="icon">
+                                 <Button variant="ghost" size="icon" disabled={isDeleting === product.id}>
                                    <MoreHorizontal className="h-4 w-4" />
                                    <span className="sr-only">Actions</span>
                                  </Button>
@@ -182,7 +181,7 @@ export default function AdminProductsPage() {
                                    </Link>
                                  </DropdownMenuItem>
                                  <AlertDialogTrigger asChild>
-                                     <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                     <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" disabled={isDeleting === product.id}>
                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
                                      </DropdownMenuItem>
                                   </AlertDialogTrigger>
@@ -197,13 +196,13 @@ export default function AdminProductsPage() {
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogCancel disabled={isDeleting === product.id}>Cancel</AlertDialogCancel>
                                   <AlertDialogAction
                                      onClick={() => handleDeleteProduct(product.id, product.name)}
                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                     disabled={isLoading} // Disable during deletion
+                                     disabled={isDeleting === product.id}
                                   >
-                                    {isLoading ? "Deleting..." : "Delete"}
+                                    {isDeleting === product.id ? "Deleting..." : "Delete"}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>

@@ -15,6 +15,9 @@ import { CreditCard, PackageCheck, Truck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+// Need Checkbox for Billing Address toggle
+import { Checkbox } from "@/components/ui/checkbox"
+import Link from 'next/link';
 
 // Mock cart total - Replace with actual calculation from cart state
 const MOCK_SUBTOTAL = 33.99; // Example: (15.99 * 2) + 18.00
@@ -86,8 +89,8 @@ export default function CheckoutPage() {
 
    const billingSameAsShipping = form.watch('billingSameAsShipping');
 
-
-  const onSubmit: SubmitHandler<z.infer<typeof FormSchema>> = async (data) => {
+//  SubmitHandler<z.infer<typeof FormSchema>>
+  const onSubmit: any = async (data:any) => {
     setIsLoading(true);
     console.log('Checkout Data:', data);
 
@@ -296,5 +299,5 @@ export default function CheckoutPage() {
   );
 }
 
-// Need Checkbox for Billing Address toggle
-import { Checkbox } from "@/components/ui/checkbox"
+
+
