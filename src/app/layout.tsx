@@ -4,6 +4,7 @@ import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { AuthProvider } from '@/contexts/auth-context'; // Import AuthProvider
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -27,12 +28,14 @@ export default function RootLayout({
           'min-h-screen bg-background font-sans antialiased',
           geistSans.variable
         )}
-        suppressHydrationWarning={true}
+        suppressHydrationWarning // It's okay to have this on body if you also have it on html
       >
-        <SidebarProvider>
-          {children}
-        </SidebarProvider>
-        <Toaster />
+        <AuthProvider> {/* Wrap with AuthProvider */}
+          <SidebarProvider>
+            {children}
+          </SidebarProvider>
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );
