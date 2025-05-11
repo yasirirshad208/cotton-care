@@ -1,13 +1,14 @@
+
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { predictCottonDisease, CottonDisease, PredictionResponse } from '@/services/cotton-disease-api';
 import { summarizeDiseaseInfo } from '@/ai/flows/summarize-disease-info';
 import { generatePlantingTips } from '@/ai/flows/generate-planting-tips';
-import { suggestTreatmentOptions } from '@/ai/flows/suggest-treatment-options'; // Assuming this exists
+import { suggestTreatmentOptions } from '@/ai/flows/suggest-treatment-options';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -19,7 +20,7 @@ import { UploadCloud, Leaf, AlertCircle, Activity, CheckCircle, XCircle, FlaskCo
 import Image from 'next/image';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils'; // Import cn
+import { cn } from '@/lib/utils';
 
 // Mock available products - Replace with actual data source
 const MOCK_PRODUCTS = [
@@ -32,18 +33,12 @@ const MOCK_PRODUCTS = [
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
 
-// Updated schema to avoid server-side FileList error
+// Updated schema to expect a File object directly
 const FormSchema = z.object({
-  image: z.any()
-    // Check if it's a FileList on the client, skip on server
-    .refine((val) => typeof window === 'undefined' || val instanceof FileList, {
-      message: "Input must be a file selection.",
-    })
-    .refine((files) => files?.length === 1, 'Image is required.') // Should have exactly one file
-    .transform((files) => files[0] as File) // Get the single file from FileList
-    .refine((file) => file?.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
+  image: z.instanceof(File, { message: "Image is required." })
+    .refine((file) => file.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
     .refine(
-      (file) => ACCEPTED_IMAGE_TYPES.includes(file?.type),
+      (file) => ACCEPTED_IMAGE_TYPES.includes(file.type),
       "Only .jpg, .jpeg, .png, .webp, and .gif formats are supported."
     ),
 });
@@ -65,16 +60,25 @@ export default function DetectPage() {
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
-    mode: "onChange", // Validate on change for better UX with file input
+    mode: "onChange", 
   });
 
-  const { register, setValue } = form; // Get register and setValue
+  const { register, setValue, watch } = form;
+
+  // Watch the image field to react to its changes, e.g., for debugging
+  // const watchedImage = watch("image");
+  // useEffect(() => {
+  //   console.log("Watched image in RHF:", watchedImage);
+  //   console.log("Form errors:", form.formState.errors);
+  //   console.log("Is form valid:", form.formState.isValid);
+  // }, [watchedImage, form.formState.errors, form.formState.isValid]);
+
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      const file = files[0];
-      setValue('image', files, { shouldValidate: true }); // Update form state with FileList
+      const file = files[0]; // Get the single File object
+      setValue('image', file, { shouldValidate: true }); // Update form state with the File object
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result as string);
@@ -82,10 +86,10 @@ export default function DetectPage() {
       reader.readAsDataURL(file);
     } else {
       setPreview(null);
-      setValue('image', null, { shouldValidate: true }); // Reset form state if no file
+      setValue('image', undefined as any, { shouldValidate: true }); // Reset form state if no file, use undefined to trigger "required"
     }
-     setResult(null); // Clear previous results on new file selection
-     setError(null);
+    setResult(null); // Clear previous results on new file selection
+    setError(null);
   };
 
   const onSubmit: SubmitHandler<z.infer<typeof FormSchema>> = async (data) => {
@@ -93,14 +97,13 @@ export default function DetectPage() {
     setError(null);
     setResult(null);
 
-    const imageFile = data.image; // data.image is now a File object due to transform
+    const imageFile = data.image; // data.image is now a File object
 
     if (!imageFile) {
-        setError("No image file provided after validation.");
+        setError("No image file provided after validation."); // Should not happen if form is valid
         setIsLoading(false);
         return;
     }
-
 
     try {
       console.log("Calling predictCottonDisease...");
@@ -109,23 +112,22 @@ export default function DetectPage() {
 
       const currentResult: DetectionResult = {
         disease: prediction.disease,
-        imageUrl: preview,
+        imageUrl: preview, // Use the generated preview URL
         summary: null,
         treatment: null,
         prevention: null,
         plantingTips: null,
       };
 
-      setResult(currentResult); // Set initial result with disease and image
+      setResult(currentResult); 
 
       if (prediction.disease && prediction.disease !== 'Healthy') {
         console.log(`Generating summary for: ${prediction.disease}`);
         const summaryRes = await summarizeDiseaseInfo({ disease: prediction.disease });
         currentResult.summary = summaryRes.summary;
-        setResult({ ...currentResult }); // Update state with summary
+        setResult({ ...currentResult });
 
         console.log(`Generating treatment options for: ${prediction.disease}`);
-        // Filter relevant products - this logic should be more sophisticated in production
         const relevantProducts = MOCK_PRODUCTS.filter(p => p.suitableFor.includes(prediction.disease!));
         const treatmentRes = await suggestTreatmentOptions({
             disease: prediction.disease,
@@ -133,15 +135,14 @@ export default function DetectPage() {
          });
         currentResult.treatment = treatmentRes.treatmentOptions;
         currentResult.prevention = treatmentRes.preventativeMeasures;
-        setResult({ ...currentResult }); // Update state with treatment/prevention
+        setResult({ ...currentResult });
 
       } else if (prediction.disease === 'Healthy') {
          console.log("Generating planting tips for Healthy plant...");
          const tipsRes = await generatePlantingTips({ disease: 'Healthy' });
          currentResult.plantingTips = tipsRes.plantingTips;
-         setResult({ ...currentResult }); // Update state with planting tips
+         setResult({ ...currentResult });
       } else {
-        // Handle case where API returns null disease but not Healthy explicitly
         console.log("Disease prediction was null or unrecognized, but not 'Healthy'.");
         currentResult.summary = "Could not definitively identify a disease. The plant might be healthy or affected by an unknown issue.";
         setResult({...currentResult});
@@ -156,15 +157,15 @@ export default function DetectPage() {
   };
 
   const getDiseaseBadgeVariant = (disease: CottonDisease | null): "default" | "destructive" | "secondary" => {
-     if (disease === 'Healthy') return 'default'; // Using default (like success) for Healthy
-     if (disease) return 'destructive'; // Use destructive for any detected disease
-     return 'secondary'; // Use secondary if null/unknown
+     if (disease === 'Healthy') return 'default';
+     if (disease) return 'destructive';
+     return 'secondary';
   };
 
   const getDiseaseIcon = (disease: CottonDisease | null) => {
      if (disease === 'Healthy') return <CheckCircle className="h-5 w-5 text-green-600" />;
      if (disease) return <AlertCircle className="h-5 w-5 text-destructive" />;
-     return <XCircle className="h-5 w-5 text-muted-foreground" />; // Icon for unknown/null
+     return <XCircle className="h-5 w-5 text-muted-foreground" />;
   };
 
   return (
@@ -185,7 +186,7 @@ export default function DetectPage() {
               <FormField
                 control={form.control}
                 name="image"
-                render={({ fieldState }) => ( // Use fieldState to access error
+                render={({ fieldState }) => (
                   <FormItem>
                     <FormLabel>Upload Image</FormLabel>
                     <FormControl>
@@ -194,7 +195,7 @@ export default function DetectPage() {
                           htmlFor="dropzone-file"
                           className={cn(
                             "flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-secondary hover:bg-muted transition-colors",
-                            fieldState.error ? "border-destructive" : "border-input" // Use fieldState.error
+                            fieldState.error ? "border-destructive" : "border-input"
                           )}
                         >
                           {preview ? (
@@ -218,13 +219,12 @@ export default function DetectPage() {
                               </p>
                             </div>
                           )}
-                          {/* Use register and manual onChange */}
                           <Input
                             id="dropzone-file"
                             type="file"
                             accept="image/*"
                             className="hidden"
-                            {...register("image")} // Register the input
+                            // {...register("image")} // register can be used, but onChange handles setValue
                             onChange={handleFileChange} // Use manual handler
                             disabled={isLoading}
                           />
@@ -342,3 +342,6 @@ export default function DetectPage() {
     </div>
   );
 }
+
+
+    
