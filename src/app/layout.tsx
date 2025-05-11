@@ -27,6 +27,7 @@ export default function RootLayout({
           'min-h-screen bg-background font-sans antialiased',
           geistSans.variable
         )}
+        suppressHydrationWarning={true}
       >
         <SidebarProvider>
           {children}
