@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ChevronLeft, Package, UserCircle, MapPin, DollarSign, CalendarDays, Truck, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Label } from '@/components/ui/label'; // Added import for Label
 
 // If OrderItem from API is different from AdminOrderItem locally
 type DisplayOrderItem = ApiOrderItem; // Use the one from order-api
@@ -231,3 +232,4 @@ export default function AdminOrderDetailPage() {
     </div>
   );
 }
+
