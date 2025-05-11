@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Trash2, ShoppingCart, CreditCard, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AuthenticatedRouteGuard } from '@/components/auth/authenticated-route-guard';
 
 // Mock cart data - Replace with actual cart state management (e.g., Context, Zustand, Redux)
 interface CartItem {
@@ -27,7 +28,7 @@ const MOCK_CART_ITEMS: CartItem[] = [
    { id: 'prod3', name: 'Copper Fungicide', price: 18.00, quantity: 1, image: 'https://picsum.photos/100/100?random=5', stock: 100 },
 ];
 
-export default function CartPage() {
+function CartPageContent() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -211,5 +212,14 @@ export default function CartPage() {
         </div>
       )}
     </div>
+  );
+}
+
+
+export default function CartPage() {
+  return (
+    <AuthenticatedRouteGuard>
+      <CartPageContent />
+    </AuthenticatedRouteGuard>
   );
 }

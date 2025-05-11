@@ -10,14 +10,15 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Bell, Lock, Palette, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { AuthenticatedRouteGuard } from '@/components/auth/authenticated-route-guard';
 
-export default function SettingsPage() {
+function SettingsPageContent() {
    const { toast } = useToast();
 
    // Mock settings state - replace with actual state management/API calls
    const [settings, setSettings] = React.useState({
        emailNotifications: true,
-       darkMode: false, // Assuming theme switching logic exists elsewhere or is handled by OS preference
+       darkMode: false, 
    });
 
    const handleSettingChange = (key: keyof typeof settings, value: any) => {
@@ -25,7 +26,6 @@ export default function SettingsPage() {
    };
 
    const handleSaveChanges = () => {
-       // Simulate saving settings
        console.log("Saving settings:", settings);
        toast({
            title: "Settings Saved",
@@ -57,7 +57,6 @@ export default function SettingsPage() {
                    onCheckedChange={(checked) => handleSettingChange('emailNotifications', checked)}
                  />
             </div>
-             {/* Add more notification options if needed (e.g., SMS, push) */}
         </CardContent>
 
         <Separator />
@@ -67,7 +66,6 @@ export default function SettingsPage() {
            <CardDescription>Manage your account security settings.</CardDescription>
          </CardHeader>
          <CardContent className="space-y-4">
-           {/* Example: Change Password */}
            <div className="space-y-2">
                <Label htmlFor="current-password">Current Password</Label>
                <Input id="current-password" type="password" />
@@ -77,40 +75,23 @@ export default function SettingsPage() {
                <Input id="new-password" type="password" />
            </div>
            <Button variant="outline">Change Password</Button>
-           {/* Add other security features like 2FA if applicable */}
          </CardContent>
-
-        {/* Theme settings could go here if you implement manual theme switching */}
-        {/* <Separator />
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Palette className="h-5 w-5 text-primary"/> Appearance</CardTitle>
-          <CardDescription>Customize the look and feel of the app.</CardDescription>
-        </CardHeader>
-        <CardContent>
-           <div className="flex items-center justify-between space-x-2 rounded-lg border p-4">
-               <Label htmlFor="dark-mode" className="flex flex-col space-y-1">
-                  <span>Dark Mode</span>
-                  <span className="font-normal leading-snug text-muted-foreground">
-                     Enable dark theme for the application.
-                  </span>
-               </Label>
-               <Switch
-                 id="dark-mode"
-                 checked={settings.darkMode}
-                 onCheckedChange={(checked) => handleSettingChange('darkMode', checked)}
-               />
-           </div>
-        </CardContent> */}
-
          <Separator />
-
          <CardContent className="pt-6">
             <Button onClick={handleSaveChanges} className="w-full sm:w-auto">
                <Save className="mr-2 h-4 w-4" /> Save Preferences
              </Button>
          </CardContent>
-
       </Card>
     </div>
+  );
+}
+
+
+export default function SettingsPage() {
+  return (
+    <AuthenticatedRouteGuard>
+      <SettingsPageContent />
+    </AuthenticatedRouteGuard>
   );
 }

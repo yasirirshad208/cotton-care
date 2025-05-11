@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { History, Package, CalendarDays, Truck, Receipt } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns'; // For date formatting
+import { format } from 'date-fns'; 
+import { AuthenticatedRouteGuard } from '@/components/auth/authenticated-route-guard';
 
 // Mock order data - Replace with actual API call/data fetching
 interface OrderItem {
@@ -80,7 +81,7 @@ const getStatusBadgeVariant = (status: Order['status']): "default" | "secondary"
 };
 
 
-export default function OrderHistoryPage() {
+function OrderHistoryPageContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -190,8 +191,6 @@ export default function OrderHistoryPage() {
                     <div className="flex justify-end gap-2 mt-4">
                        <Button variant="outline" size="sm">View Invoice</Button>
                        {order.status === 'Processing' && <Button variant="destructive" size="sm">Cancel Order</Button>}
-                       {/* Add reorder button if needed */}
-                       {/* <Button variant="secondary" size="sm">Reorder</Button> */}
                    </div>
                  </div>
               </AccordionContent>
@@ -200,5 +199,13 @@ export default function OrderHistoryPage() {
         </Accordion>
       )}
     </div>
+  );
+}
+
+export default function OrderHistoryPage() {
+  return (
+    <AuthenticatedRouteGuard>
+      <OrderHistoryPageContent />
+    </AuthenticatedRouteGuard>
   );
 }

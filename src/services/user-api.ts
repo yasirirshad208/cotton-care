@@ -1,11 +1,20 @@
 // src/services/user-api.ts
 
+export interface UserAddress {
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  zip: string;
+}
 export interface User {
   id: string;
   email: string;
   name: string;
   avatarUrl?: string;
   isAdmin: boolean;
+  phone?: string;
+  address?: UserAddress;
 }
 
 // Mock database of users
@@ -16,6 +25,13 @@ const MOCK_USERS: User[] = [
     name: 'Admin User',
     avatarUrl: 'https://picsum.photos/100/100?random=admin',
     isAdmin: true,
+    phone: '555-0101',
+    address: {
+      line1: '456 Admin Lane',
+      city: 'ControlCity',
+      state: 'SYS',
+      zip: '00001',
+    },
   },
   {
     id: 'user002',
@@ -23,6 +39,13 @@ const MOCK_USERS: User[] = [
     name: 'Regular User',
     avatarUrl: 'https://picsum.photos/100/100?random=user',
     isAdmin: false,
+    phone: '555-0102',
+    address: {
+      line1: '123 Cotton Row',
+      city: 'Farmville',
+      state: 'TX',
+      zip: '75001',
+    },
   },
 ];
 

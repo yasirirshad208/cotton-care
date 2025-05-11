@@ -15,9 +15,9 @@ import { CreditCard, PackageCheck, Truck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-// Need Checkbox for Billing Address toggle
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from 'next/link';
+import { AuthenticatedRouteGuard } from '@/components/auth/authenticated-route-guard';
 
 // Mock cart total - Replace with actual calculation from cart state
 const MOCK_SUBTOTAL = 33.99; // Example: (15.99 * 2) + 18.00
@@ -58,7 +58,7 @@ const FormSchema = z.object({
 });
 
 
-export default function CheckoutPage() {
+function CheckoutPageContent() {
   const [isLoading, setIsLoading] = useState(false); // Simulate loading/processing
   const [isOrderPlaced, setIsOrderPlaced] = useState(false);
   const router = useRouter();
@@ -69,27 +69,11 @@ export default function CheckoutPage() {
     defaultValues: {
       billingSameAsShipping: true,
        paymentMethod: 'creditCard', // Default selection
-       // Prefill example data - remove in production
-       // shippingAddress: {
-       //    fullName: "Test User",
-       //    addressLine1: "123 Cotton Row",
-       //    city: "Farmville",
-       //    state: "TX",
-       //    zipCode: "75001",
-       //    phoneNumber: "1234567890"
-       // },
-       // paymentDetails: {
-       //    cardNumber: "4111111111111111",
-       //    expiryDate: "12/25",
-       //    cvc: "123",
-       //    nameOnCard: "Test User"
-       // }
     },
   });
 
    const billingSameAsShipping = form.watch('billingSameAsShipping');
 
-//  SubmitHandler<z.infer<typeof FormSchema>>
   const onSubmit: any = async (data:any) => {
     setIsLoading(true);
     console.log('Checkout Data:', data);
@@ -97,24 +81,19 @@ export default function CheckoutPage() {
     // Simulate API call for order placement
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Handle potential errors during API call here
-
     setIsLoading(false);
     setIsOrderPlaced(true);
     toast({
       title: 'Order Placed Successfully!',
       description: 'Thank you for your purchase. Your order is being processed.',
-      variant: 'default', // Use default (greenish in our theme) for success
+      variant: 'default', 
     });
 
-    // Redirect to order confirmation or history page after a short delay
     setTimeout(() => {
-       // TODO: Redirect to a proper order confirmation page /orders/[orderId]
        router.push('/orders');
     }, 2000);
   };
 
-   // If order is placed, show confirmation message
    if (isOrderPlaced) {
        return (
            <div className="container mx-auto py-16 px-4 md:px-6 flex flex-col items-center justify-center text-center">
@@ -145,9 +124,7 @@ export default function CheckoutPage() {
       <h1 className="text-3xl font-bold mb-6">Checkout</h1>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Shipping & Payment Details Column */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Shipping Address */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Truck className="h-5 w-5 text-primary"/> Shipping Address</CardTitle>
@@ -163,7 +140,6 @@ export default function CheckoutPage() {
               </CardContent>
             </Card>
 
-            {/* Billing Address */}
             <Card>
                <CardHeader>
                   <CardTitle>Billing Address</CardTitle>
@@ -186,16 +162,18 @@ export default function CheckoutPage() {
                </CardHeader>
                {!billingSameAsShipping && (
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 border-t pt-6">
-                      {/* TODO: Add Billing Address Fields Here, similar to Shipping */}
-                      <p className="text-muted-foreground md:col-span-2">Please enter your billing address details.</p>
+                       <p className="text-muted-foreground md:col-span-2">Please enter your billing address details.</p>
                        <FormField control={form.control} name="billingAddress.fullName" render={({ field }) => ( <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                       {/* ... other billing fields ... */}
+                       <FormField control={form.control} name="billingAddress.phoneNumber" render={({ field }) => ( <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                       <FormField control={form.control} name="billingAddress.addressLine1" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Address Line 1</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                       <FormField control={form.control} name="billingAddress.addressLine2" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Address Line 2 (Optional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                       <FormField control={form.control} name="billingAddress.city" render={({ field }) => ( <FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                       <FormField control={form.control} name="billingAddress.state" render={({ field }) => ( <FormItem><FormLabel>State / Province</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                        <FormField control={form.control} name="billingAddress.zipCode" render={({ field }) => ( <FormItem><FormLabel>ZIP / Postal Code</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                   </CardContent>
                )}
             </Card>
 
-            {/* Payment Method */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5 text-primary"/> Payment Method</CardTitle>
@@ -220,11 +198,6 @@ export default function CheckoutPage() {
                                 Credit Card
                               </FormLabel>
                             </FormItem>
-                            {/* Add other payment methods if needed */}
-                            {/* <FormItem className="flex items-center space-x-3 space-y-0">
-                              <FormControl><RadioGroupItem value="paypal" /></FormControl>
-                              <FormLabel className="font-normal">PayPal</FormLabel>
-                            </FormItem> */}
                           </RadioGroup>
                         </FormControl>
                         <FormMessage />
@@ -232,7 +205,6 @@ export default function CheckoutPage() {
                     )}
                   />
 
-                  {/* Credit Card Details */}
                  {form.watch('paymentMethod') === 'creditCard' && (
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-6">
                        <FormField control={form.control} name="paymentDetails.nameOnCard" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Name on Card</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
@@ -245,14 +217,12 @@ export default function CheckoutPage() {
             </Card>
           </div>
 
-          {/* Order Summary Column */}
           <div className="lg:col-span-1">
-            <Card className="sticky top-20 shadow-md"> {/* Make summary sticky */}
+            <Card className="sticky top-20 shadow-md"> 
               <CardHeader>
                 <CardTitle>Order Summary</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {/* TODO: Display actual cart items here */}
                 <div className="flex justify-between text-sm text-muted-foreground">
                    <span>Neem Oil Spray x 2</span>
                    <span>${(15.99 * 2).toFixed(2)}</span>
@@ -299,5 +269,10 @@ export default function CheckoutPage() {
   );
 }
 
-
-
+export default function CheckoutPage() {
+  return (
+    <AuthenticatedRouteGuard>
+      <CheckoutPageContent />
+    </AuthenticatedRouteGuard>
+  );
+}
