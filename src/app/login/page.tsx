@@ -42,7 +42,7 @@ export default function LoginPage() {
   const totalIsLoading = authLoading || formIsLoading;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+    <div className="flex flex-1 min-h-screen items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-sm shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Welcome Back!</CardTitle>
@@ -88,16 +88,15 @@ export default function LoginPage() {
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex-col text-sm">
-            <p className="text-muted-foreground">
+        <CardFooter className="flex-col items-center text-sm">
+            <p className="text-muted-foreground text-center">
                 Don&apos;t have an account?{' '}
                 <Button variant="link" asChild className="p-0 h-auto">
                     <Link href="/signup">Sign up</Link>
                 </Button>
             </p>
-            {/* Example for testing: */}
-             <p className="text-xs text-muted-foreground mt-2">Test Admin: admin@example.com / password</p>
-             <p className="text-xs text-muted-foreground">Test User: user@example.com / password</p>
+             <p className="text-xs text-muted-foreground mt-2 text-center">Test Admin: admin@example.com / password</p>
+             <p className="text-xs text-muted-foreground text-center">Test User: user@example.com / password</p>
         </CardFooter>
       </Card>
     </div>
