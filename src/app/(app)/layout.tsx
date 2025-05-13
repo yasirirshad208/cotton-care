@@ -10,11 +10,10 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from '@/components/ui/sidebar';
-import { Leaf, ShoppingCart, Package, User, LogIn, ShieldCheck, History, BarChartHorizontal, PlusCircle, SettingsIcon, LineChart, Users } from 'lucide-react'; // Added missing icons
+import { Leaf, ShoppingCart, Package, User, LogIn, ShieldCheck, History, BarChartHorizontal, PlusCircle, SettingsIcon, LineChart, Users } from 'lucide-react';
 import Link from 'next/link';
 import UserNav from '@/components/layout/user-nav';
-import { AuthGuardOptional } from '@/components/auth/auth-guard-optional';
-import { useAuth } from '@/contexts/auth-context'; // To conditionally show admin links
+import { useAuth } from '@/contexts/auth-context'; 
 
 // Wrapper component to use the hook
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
@@ -25,8 +24,8 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
       <Sidebar side="left" variant="sidebar" collapsible="icon">
         <SidebarHeader className="p-4">
           <Link href="/detect" className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
-            <Leaf className="h-6 w-6 text-sidebar-primary" /> {/* Changed to text-sidebar-primary */}
-            <span className="font-semibold text-lg text-sidebar-primary group-data-[collapsible=icon]:hidden">CottonCare</span> {/* Changed to text-sidebar-primary */}
+            <Leaf className="h-6 w-6 text-sidebar-primary" />
+            <span className="font-semibold text-lg text-sidebar-primary group-data-[collapsible=icon]:hidden">CottonCare</span>
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2">
@@ -140,8 +139,6 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthGuardOptional>
       <AppLayoutContent>{children}</AppLayoutContent>
-    </AuthGuardOptional>
   );
 }

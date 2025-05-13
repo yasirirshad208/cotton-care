@@ -40,7 +40,6 @@ export function AuthenticatedRouteGuard({ children }: AuthenticatedRouteGuardPro
 
   // Fallback: user is null and not loading (being redirected)
   // Render a minimal loading state or null until redirection completes.
-  // A full-page skeleton might be too much here if redirection is quick.
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-var(--header-height,0px))] p-4">
         <div className="space-y-4 w-full max-w-md">
