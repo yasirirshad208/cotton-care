@@ -1,3 +1,5 @@
+'use client'; // Add this directive
+
 import React from 'react';
 import {
   Sidebar,
@@ -10,22 +12,22 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from '@/components/ui/sidebar';
-import { Leaf, ShoppingCart, Package, User, LogIn, ShieldCheck, History, BarChartHorizontal, PlusCircle, SettingsIcon, LineChart, Users } from 'lucide-react';
+import { Leaf, ShoppingCart, Package, User, LogIn, ShieldCheck, History, BarChartHorizontal, PlusCircle, SettingsIcon, LineChart, Users, LayoutDashboard } from 'lucide-react';
 import Link from 'next/link';
 import UserNav from '@/components/layout/user-nav';
 import { useAuth } from '@/contexts/auth-context'; 
 
 // Wrapper component to use the hook
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar side="left" variant="sidebar" collapsible="icon">
         <SidebarHeader className="p-4">
-          <Link href="/detect" className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
-            <Leaf className="h-6 w-6 text-sidebar-primary" />
-            <span className="font-semibold text-lg text-sidebar-primary group-data-[collapsible=icon]:hidden">CottonCare</span>
+          <Link href={user ? "/detect" : "/"} className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
+            <Leaf className="h-8 w-8 text-sidebar-primary" />
+            <span className="font-semibold text-xl text-sidebar-primary group-data-[collapsible=icon]:hidden">CottonCare</span>
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2">
@@ -46,29 +48,41 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Cart">
-                <Link href="/cart">
-                  <ShoppingCart />
-                  <span>Cart</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Order History">
-                <Link href="/orders">
-                  <History />
-                  <span>Order History</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            { user && (
+              <>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Cart">
+                    <Link href="/cart">
+                      <ShoppingCart />
+                      <span>Cart</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Order History">
+                    <Link href="/orders">
+                      <History />
+                      <span>Order History</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </>
+            )}
             {user?.isAdmin && (
               <>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Admin Dashboard">
+                        <Link href="/admin">
+                            <LayoutDashboard />
+                            <span>Dashboard</span>
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Admin: Products">
                     <Link href="/admin/products">
                       <Package />
-                      <span>Admin Products</span>
+                      <span>Manage Products</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -84,12 +98,12 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                   <SidebarMenuButton asChild tooltip="Admin: Orders">
                     <Link href="/admin/orders">
                       <ShoppingCart />
-                      <span>Admin Orders</span>
+                      <span>Manage Orders</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Admin: Users">
+                  <SidebarMenuButton asChild tooltip="Admin: Users (Placeholder)">
                     <Link href="/admin/users">
                       <Users />
                       <span>Manage Users</span>
@@ -97,7 +111,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Admin: Analytics">
+                  <SidebarMenuButton asChild tooltip="Admin: Analytics (Placeholder)">
                     <Link href="/admin/analytics">
                       <LineChart />
                       <span>Analytics</span>
@@ -105,7 +119,7 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Admin: Settings">
+                  <SidebarMenuButton asChild tooltip="Admin: Settings (Placeholder)">
                     <Link href="/admin/settings">
                       <SettingsIcon />
                       <span>Admin Settings</span>
