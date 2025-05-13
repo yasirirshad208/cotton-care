@@ -1,4 +1,4 @@
-// src/app/login/page.tsx
+// src/app/signup/page.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -10,35 +10,42 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useAuth } from '@/contexts/auth-context';
-import { LogIn, Loader2, Leaf } from 'lucide-react';
+import { UserPlus, Loader2, Leaf } from 'lucide-react';
 import Link from 'next/link';
 
-const loginSchema = z.object({
+const signupSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string().min(6, 'Please confirm your password'),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'], // Error will be shown on confirmPassword field
 });
 
-type LoginFormValues = z.infer<typeof loginSchema>;
+type SignupFormValues = z.infer<typeof signupSchema>;
 
-export default function LoginPage() {
-  const { login, isLoading: authLoading } = useAuth();
+export default function SignupPage() {
+  const { signup, isLoading: authLoading } = useAuth();
   const [formIsLoading, setFormIsLoading] = useState(false);
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
     defaultValues: {
+      name: '',
       email: '',
       password: '',
+      confirmPassword: '',
     },
   });
 
-  const onSubmit = async (data: LoginFormValues) => {
+  const onSubmit = async (data: SignupFormValues) => {
     setFormIsLoading(true);
-    await login(data.email, data.password);
-    // Navigation is handled within the login function of AuthContext
+    await signup({ name: data.name, email: data.email, password: data.password });
+    // Navigation/toast is handled within the signup function of AuthContext
     setFormIsLoading(false);
   };
-
+  
   const totalIsLoading = authLoading || formIsLoading;
 
   return (
@@ -49,12 +56,25 @@ export default function LoginPage() {
       </Link>
       <Card className="w-full max-w-sm shadow-xl">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Welcome Back!</CardTitle>
-          <CardDescription>Sign in to access your account.</CardDescription>
+          <CardTitle className="text-2xl">Create an Account</CardTitle>
+          <CardDescription>Join CottonCare to protect your crops.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} disabled={totalIsLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="email"
@@ -81,26 +101,37 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} disabled={totalIsLoading} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <Button type="submit" className="w-full" disabled={totalIsLoading}>
                 {totalIsLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <LogIn className="mr-2 h-4 w-4" />
+                  <UserPlus className="mr-2 h-4 w-4" />
                 )}
-                Sign In
+                Sign Up
               </Button>
             </form>
           </Form>
         </CardContent>
         <CardFooter className="flex-col items-center text-sm">
-            <p className="text-muted-foreground text-center">
-                Don&apos;t have an account?{' '}
+            <p className="text-muted-foreground">
+                Already have an account?{' '}
                 <Button variant="link" asChild className="p-0 h-auto">
-                    <Link href="/signup">Sign up</Link>
+                    <Link href="/login">Sign in</Link>
                 </Button>
             </p>
-             <p className="text-xs text-muted-foreground mt-2 text-center">Test Admin: admin@example.com / password</p>
-             <p className="text-xs text-muted-foreground text-center">Test User: user@example.com / password</p>
         </CardFooter>
       </Card>
     </div>

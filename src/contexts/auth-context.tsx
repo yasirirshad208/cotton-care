@@ -1,16 +1,17 @@
 // src/contexts/auth-context.tsx
 'use client';
 
-import type { User } from '@/services/user-api';
-import { login as apiLogin, getUserById } from '@/services/user-api';
+import type { User, SignupData } from '@/services/user-api';
+import { login as apiLogin, getUserById, signup as apiSignup } from '@/services/user-api';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
+  signup: (signupData: SignupData) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -20,13 +21,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   useEffect(() => {
     const initializeAuth = async () => {
       setIsLoading(true);
       try {
-        // Check for stored user ID (e.g., from localStorage)
         const storedUserId = localStorage.getItem('userId');
         if (storedUserId) {
           const fetchedUser = await getUserById(storedUserId);
@@ -34,7 +36,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('Failed to initialize auth:', error);
-        // Potentially clear stored user if fetching fails
         localStorage.removeItem('userId');
       } finally {
         setIsLoading(false);
@@ -43,20 +44,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
   }, []);
 
+  const handleSuccessfulAuth = (loggedInUser: User) => {
+    setUser(loggedInUser);
+    localStorage.setItem('userId', loggedInUser.id);
+    
+    const redirectPath = searchParams.get('redirect');
+    if (redirectPath) {
+      router.push(redirectPath);
+    } else if (loggedInUser.isAdmin) {
+      router.push('/admin/products');
+    } else {
+      router.push('/detect');
+    }
+  };
+
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
       const loggedInUser = await apiLogin(email, password);
       if (loggedInUser) {
-        setUser(loggedInUser);
-        localStorage.setItem('userId', loggedInUser.id);
         toast({ title: 'Login Successful', description: `Welcome back, ${loggedInUser.name}!` });
-        // Redirect based on role or to a default page
-        if (loggedInUser.isAdmin) {
-          router.push('/admin/products');
-        } else {
-          router.push('/detect');
-        }
+        handleSuccessfulAuth(loggedInUser);
         return true;
       } else {
         toast({ title: 'Login Failed', description: 'Invalid email or password.', variant: 'destructive' });
@@ -71,6 +79,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signup = async (signupData: SignupData): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const newUser = await apiSignup(signupData);
+      if (newUser) {
+        toast({ title: 'Signup Successful', description: `Welcome, ${newUser.name}! Please log in.` });
+        // Redirect to login after signup, optionally with email prefill
+        router.push(`/login?email=${encodeURIComponent(newUser.email)}`);
+        return true;
+      } else {
+        // apiSignup might return null if email already exists or other validation fails on mock backend
+        toast({ title: 'Signup Failed', description: 'Could not create account. The email might already be in use.', variant: 'destructive' });
+        return false;
+      }
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      toast({ title: 'Signup Error', description: error.message || 'An unexpected error occurred.', variant: 'destructive' });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('userId');
@@ -79,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
