@@ -10,18 +10,23 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from '@/components/ui/sidebar';
-import { Leaf, ShoppingCart, Package, User, LogIn, ShieldCheck, History, BarChartHorizontal } from 'lucide-react';
+import { Leaf, ShoppingCart, Package, User, LogIn, ShieldCheck, History, BarChartHorizontal, PlusCircle, SettingsIcon, LineChart, Users } from 'lucide-react'; // Added missing icons
 import Link from 'next/link';
 import UserNav from '@/components/layout/user-nav';
+import { AuthGuardOptional } from '@/components/auth/auth-guard-optional';
+import { useAuth } from '@/contexts/auth-context'; // To conditionally show admin links
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+// Wrapper component to use the hook
+function AppLayoutContent({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar side="left" variant="sidebar" collapsible="icon">
         <SidebarHeader className="p-4">
           <Link href="/detect" className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
-            <Leaf className="h-6 w-6 text-primary" />
-            <span className="font-semibold text-lg text-primary group-data-[collapsible=icon]:hidden">CottonCare</span>
+            <Leaf className="h-6 w-6 text-sidebar-primary" /> {/* Changed to text-sidebar-primary */}
+            <span className="font-semibold text-lg text-sidebar-primary group-data-[collapsible=icon]:hidden">CottonCare</span> {/* Changed to text-sidebar-primary */}
           </Link>
         </SidebarHeader>
         <SidebarContent className="p-2">
@@ -58,7 +63,58 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            {/* Admin Links - Conditionally render based on auth/role - UserNav now handles admin link based on context */}
+            {user?.isAdmin && (
+              <>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Admin: Products">
+                    <Link href="/admin/products">
+                      <Package />
+                      <span>Admin Products</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Admin: Add Product">
+                    <Link href="/admin/products/new">
+                      <PlusCircle />
+                      <span>Add Product</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Admin: Orders">
+                    <Link href="/admin/orders">
+                      <ShoppingCart />
+                      <span>Admin Orders</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Admin: Users">
+                    <Link href="/admin/users">
+                      <Users />
+                      <span>Manage Users</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Admin: Analytics">
+                    <Link href="/admin/analytics">
+                      <LineChart />
+                      <span>Analytics</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Admin: Settings">
+                    <Link href="/admin/settings">
+                      <SettingsIcon />
+                      <span>Admin Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </>
+            )}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="p-4 mt-auto border-t border-sidebar-border group-data-[collapsible=icon]:hidden">
@@ -78,5 +134,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </main>
       </SidebarInset>
     </div>
+  );
+}
+
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthGuardOptional>
+      <AppLayoutContent>{children}</AppLayoutContent>
+    </AuthGuardOptional>
   );
 }
