@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AuthProvider } from '@/contexts/auth-context'; // Import AuthProvider
+import { Suspense } from 'react';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -30,12 +31,14 @@ export default function RootLayout({
         )}
         suppressHydrationWarning // It's okay to have this on body if you also have it on html
       >
+      <Suspense fallback={<div className="text-center md:mt-20 mt-12"><span className="loader"></span></div>}>
         <AuthProvider> {/* Wrap with AuthProvider */}
           <SidebarProvider>
             {children}
           </SidebarProvider>
           <Toaster />
         </AuthProvider>
+        </Suspense>
       </body>
     </html>
   );
