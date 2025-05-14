@@ -49,7 +49,7 @@ export default function SignupPage() {
   const totalIsLoading = authLoading || formIsLoading;
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-muted/40 p-4">
       <Link href="/" className="mb-8 flex items-center gap-2 text-primary">
         <Leaf className="h-10 w-10" />
         <span className="text-3xl font-bold">CottonCare</span>
