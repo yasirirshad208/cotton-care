@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -11,22 +12,12 @@ import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { useCartContext } from '@/contexts/cart-context';
 import type { ProductDetailsForCart } from '@/hooks/use-cart';
+import { getProductById as fetchProductByIdApi } from '@/services/product-api'; // Import API function
+import type { Product as ApiProduct } from '@/services/product-api'; // Import Product type
 
-// Mock product data - Replace with actual API call/data fetching
-const ALL_PRODUCTS: ProductDetailsForCart[] = [ // Ensure this matches ProductDetailsForCart
-  { id: 'prod1', name: 'Neem Oil Spray', description: 'Organic broad-spectrum insecticide and fungicide. Controls aphids, whiteflies, spider mites, and powdery mildew. Apply every 7-14 days as needed.', price: 15.99, images: ['https://placehold.co/600x600.png', 'https://placehold.co/600x600.png', 'https://placehold.co/600x600.png'], suitableFor: ['Aphids', 'Powdery mildew'], category: 'Organic', stock: 50 },
-  { id: 'prod2', name: 'Bacillus Thuringiensis (Bt)', description: 'Biological insecticide effective against caterpillars like armyworms. Harmless to beneficial insects. Mix with water and spray thoroughly.', price: 22.50, images: ['https://placehold.co/600x600.png', 'https://placehold.co/600x600.png'], suitableFor: ['Army worm'], category: 'Biological', stock: 30 },
-  { id: 'prod3', name: 'Copper Fungicide', description: 'Effective against bacterial and fungal diseases like blight and target spot. Provides protective barrier on plant surfaces.', price: 18.00, images: ['https://placehold.co/600x600.png', 'https://placehold.co/600x600.png', 'https://placehold.co/600x600.png', 'https://placehold.co/600x600.png'], suitableFor: ['Bacterial blight', 'Target spot', 'Cotton Boll Rot'], category: 'Chemical', stock: 100 },
-  { id: 'prod4', name: 'Systemic Fungicide X', description: 'Provides systemic protection against various fungal issues including powdery mildew and target spot. Absorbed by the plant.', price: 25.00, images: ['https://placehold.co/600x600.png', 'https://placehold.co/600x600.png'], suitableFor: ['Powdery mildew', 'Target spot'], category: 'Chemical', stock: 0 },
-  { id: 'prod5', name: 'Insecticidal Soap', description: 'Effective against soft-bodied insects like aphids. Works on contact. Must spray directly on pests.', price: 12.99, images: ['https://placehold.co/600x600.png', 'https://placehold.co/600x600.png'], suitableFor: ['Aphids'], category: 'Organic', stock: 75 },
-  { id: 'prod6', name: 'General Purpose Fertilizer', description: 'Balanced nutrients (e.g., 10-10-10) for overall plant health and vigor. Promotes strong growth.', price: 19.99, images: ['https://placehold.co/600x600.png'], suitableFor: [], category: 'Fertilizer', stock: 150 },
-];
+// Use ApiProduct directly, assuming it includes all necessary fields for display and cart addition
+interface Product extends ApiProduct {}
 
-interface Product extends ProductDetailsForCart { // Extends ProductDetailsForCart from use-cart
-  images: string[]; // Already part of ProductDetailsForCart if it includes all necessary fields
-  suitableFor: string[];
-  category: string;
-}
 
 function ProductImageSlider({ images, productName }: { images: string[], productName: string }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -58,8 +49,8 @@ function ProductImageSlider({ images, productName }: { images: string[], product
            <Image
              src={images[currentIndex]}
              alt={`${productName} image ${currentIndex + 1}`}
-             fill // Changed from layout="fill" to fill for Next 13+
-             style={{objectFit:"contain"}} // Changed from objectFit="contain"
+             fill 
+             style={{objectFit:"contain"}} 
              className="transition-opacity duration-500 ease-in-out"
              key={currentIndex}
              data-ai-hint="pesticide product detail"
@@ -107,39 +98,42 @@ function ProductImageSlider({ images, productName }: { images: string[], product
 
 export default function ProductDetailPage({ params }: { params: { productId: string } }) {
   const { productId } = params;
-  const [product, setProduct] = useState<Product | null | undefined>(undefined);
+  const [product, setProduct] = useState<Product | null | undefined>(undefined); // undefined for initial loading state
   const { addItem } = useCartContext();
 
   useEffect(() => {
-    const foundProduct = ALL_PRODUCTS.find(p => p.id === productId) as Product | undefined;
-    const timer = setTimeout(() => {
-       setProduct(foundProduct || null); 
-    }, 300);
-    return () => clearTimeout(timer);
+    const fetchProduct = async () => {
+        if (productId) {
+            try {
+                const fetchedProduct = await fetchProductByIdApi(productId);
+                setProduct(fetchedProduct); // Will be null if not found
+            } catch (error) {
+                console.error("Failed to fetch product:", error);
+                setProduct(null); // Set to null on error
+            }
+        }
+    };
+    fetchProduct();
   }, [productId]);
 
   const handleAddToCart = () => {
      if (!product) return;
-     // ProductDetailsForCart needs: id, name, price, image (first one), stock
      const productDetails: ProductDetailsForCart = {
        id: product.id,
        name: product.name,
        price: product.price,
-       image: product.images[0] || 'https://placehold.co/100x100.png', // Fallback image
+       image: product.images[0] || 'https://placehold.co/100x100.png',
        stock: product.stock,
-       // These are not part of ProductDetailsForCart by default, but CartItem has them.
-       // addItem from useCart expects ProductDetailsForCart.
        description: product.description, 
        category: product.category,
        suitableFor: product.suitableFor,
        images: product.images
      };
      addItem(productDetails, 1);
-     // Toast is handled by addItem in useCart
    };
 
 
-  if (product === undefined) {
+  if (product === undefined) { // Still loading
     return (
       <div className="container mx-auto py-8 px-4 md:px-6">
         <Skeleton className="h-8 w-1/4 mb-4" />
@@ -158,7 +152,7 @@ export default function ProductDetailPage({ params }: { params: { productId: str
     );
   }
 
-  if (product === null) {
+  if (product === null) { // Loaded, but not found or error occurred
     return (
       <div className="container mx-auto py-16 px-4 md:px-6 text-center">
         <h1 className="text-3xl font-bold mb-4">Product Not Found</h1>
@@ -193,7 +187,7 @@ export default function ProductDetailPage({ params }: { params: { productId: str
                  <h3 className="text-lg font-semibold mb-1 flex items-center gap-1.5"> <Leaf className="h-5 w-5 text-primary"/> Description</h3>
                  <p className="text-muted-foreground text-sm">{product.description}</p>
              </div>
-              {product.suitableFor.length > 0 && (
+              {product.suitableFor && product.suitableFor.length > 0 && (
                  <div className="mb-4">
                      <h3 className="text-lg font-semibold mb-1 flex items-center gap-1.5"><FlaskConical className="h-5 w-5 text-accent"/> Suitable For</h3>
                      <div className="flex flex-wrap gap-2">
@@ -228,3 +222,4 @@ export default function ProductDetailPage({ params }: { params: { productId: str
     </div>
   );
 }
+

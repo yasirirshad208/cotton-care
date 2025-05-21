@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { Suspense } from 'react';
@@ -12,44 +13,29 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useCartContext } from '@/contexts/cart-context';
 import type { ProductDetailsForCart } from '@/hooks/use-cart';
 import { useEffect, useState } from 'react';
+import type { Product as ApiProduct } from '@/services/product-api'; // Import Product type
+import { getProducts as fetchProductsApi } from '@/services/product-api'; // Import API function
 
+// Using ApiProduct directly as it now reflects data from localStorage or initial seed
+interface Product extends ApiProduct {}
 
-// Mock product data - Should match ProductDetailsForCart structure for consistency
-const ALL_PRODUCTS: Product[] = [ // Product type defined below for this page context
-  { id: 'prod1', name: 'Neem Oil Spray', description: 'Organic broad-spectrum insecticide and fungicide.', price: 15.99, images: ['https://placehold.co/300x200.png', 'https://placehold.co/300x200.png'], suitableFor: ['Aphids', 'Powdery mildew'], category: 'Organic', stock: 50 },
-  { id: 'prod2', name: 'Bacillus Thuringiensis (Bt)', description: 'Biological insecticide effective against caterpillars.', price: 22.50, images: ['https://placehold.co/300x200.png', 'https://placehold.co/300x200.png'], suitableFor: ['Army worm'], category: 'Biological', stock: 30 },
-  { id: 'prod3', name: 'Copper Fungicide', description: 'Effective against bacterial and fungal diseases.', price: 18.00, images: ['https://placehold.co/300x200.png', 'https://placehold.co/300x200.png'], suitableFor: ['Bacterial blight', 'Target spot', 'Cotton Boll Rot'], category: 'Chemical', stock: 100 },
-  { id: 'prod4', name: 'Systemic Fungicide X', description: 'Provides systemic protection against various fungal issues.', price: 25.00, images: ['https://placehold.co/300x200.png', 'https://placehold.co/300x200.png'], suitableFor: ['Powdery mildew', 'Target spot'], category: 'Chemical', stock: 0 },
-  { id: 'prod5', name: 'Insecticidal Soap', description: 'Effective against soft-bodied insects like aphids.', price: 12.99, images: ['https://placehold.co/300x200.png', 'https://placehold.co/300x200.png'], suitableFor: ['Aphids'], category: 'Organic', stock: 75 },
-  { id: 'prod6', name: 'General Purpose Fertilizer', description: 'Balanced nutrients for overall plant health.', price: 19.99, images: ['https://placehold.co/300x200.png'], suitableFor: [], category: 'Fertilizer', stock: 150 },
-];
-
-interface Product extends ProductDetailsForCart { // Use ProductDetailsForCart and add any other specific fields needed only by this page
-  images: string[]; // This is part of ProductDetailsForCart if it covers all necessary fields
-  suitableFor: string[];
-  category: string;
-}
 
 function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCartContext();
 
    const handleAddToCart = () => {
-     // Construct the ProductDetailsForCart object for addItem
      const productDetails: ProductDetailsForCart = {
        id: product.id,
        name: product.name,
        price: product.price,
-       image: product.images[0] || 'https://placehold.co/100x100.png', // Fallback image
+       image: product.images[0] || 'https://placehold.co/100x100.png', 
        stock: product.stock,
-       // These are not part of ProductDetailsForCart by default, but CartItem has them.
-       // addItem from useCart expects ProductDetailsForCart.
        description: product.description, 
        category: product.category,
        suitableFor: product.suitableFor,
        images: product.images
      };
      addItem(productDetails, 1);
-     // Toast is handled by addItem in useCart
    };
 
 
@@ -58,13 +44,13 @@ function ProductCard({ product }: { product: Product }) {
       <CardHeader className="p-0 relative">
          <Link href={`/products/${product.id}`}>
              <Image
-                 src={product.images[0]}
+                 src={product.images[0] || 'https://placehold.co/300x200.png'}
                  alt={product.name}
                  width={300}
                  height={200} 
                  className="w-full h-48 object-cover"
                  data-ai-hint={`${product.category} pesticide product`}
-                 unoptimized={product.images[0].startsWith('https://placehold.co')}
+                 unoptimized={product.images[0]?.startsWith('https://placehold.co')}
              />
          </Link>
         {product.stock === 0 && (
@@ -96,23 +82,32 @@ function ProductsContent() {
   const disease = searchParams.get('disease');
   const [isLoading, setIsLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
+  const [allProductsBackup, setAllProductsBackup] = useState<Product[]>([]); // For fallback
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      let filteredProducts;
-      if (disease) {
-        filteredProducts = ALL_PRODUCTS.filter(p => p.suitableFor.includes(disease));
-         if (filteredProducts.length === 0) {
-            filteredProducts = ALL_PRODUCTS;
-         }
-      } else {
-        filteredProducts = ALL_PRODUCTS;
-      }
-      setProducts(filteredProducts);
-      setIsLoading(false);
-    }, 500);
+    const loadProducts = async () => {
+        setIsLoading(true);
+        try {
+            const allFetchedProducts = await fetchProductsApi(); // Fetches from local storage or seed
+            setAllProductsBackup(allFetchedProducts); // Store all products for fallback
 
-    return () => clearTimeout(timer);
+            if (disease) {
+                const filteredProducts = await fetchProductsApi(disease); // API handles filtering logic now
+                // If the API returns an empty array for the disease filter,
+                // we decide here whether to show nothing or all products.
+                // Current API logic returns all products if filter yields none.
+                setProducts(filteredProducts);
+            } else {
+                setProducts(allFetchedProducts);
+            }
+        } catch (error) {
+            console.error("Failed to load products:", error);
+            setProducts([]); // Set to empty on error
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    loadProducts();
   }, [disease]);
 
 
@@ -125,7 +120,8 @@ function ProductsContent() {
         </h1>
          {disease && (
              <p className="text-muted-foreground mt-1">
-                 Showing products recommended for: <Badge variant="secondary">{disease}</Badge>
+                 Showing products {products.length > 0 && products.length < allProductsBackup.length ? 'recommended for' : 'for'}: <Badge variant="secondary">{disease}</Badge>
+                 {products.length === 0 && !isLoading && <span className="ml-2">No specific recommendations found, showing all products.</span>}
              </p>
          )}
           {!disease && (
@@ -160,15 +156,8 @@ function ProductsContent() {
       ) : (
         <div className="text-center py-16">
            <p className="text-xl text-muted-foreground">
-              {disease ? `No specific products found recommended for ${disease}. Showing all products.` : "No products available at the moment."}
+              No products available at the moment.
            </p>
-            {!isLoading && disease && ALL_PRODUCTS.length > 0 && products.length === 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-8">
-                    {ALL_PRODUCTS.map((product) => (
-                        <ProductCard key={product.id} product={product} />
-                    ))}
-                </div>
-            )}
         </div>
       )}
     </div>
@@ -210,3 +199,4 @@ function ProductsLoadingSkeleton() {
          </div>
     )
 }
+
