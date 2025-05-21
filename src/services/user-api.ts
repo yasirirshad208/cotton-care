@@ -15,12 +15,13 @@ export interface User {
   isAdmin: boolean;
   phone?: string;
   address?: UserAddress;
+  mockPassword?: string; // Added for mock login
 }
 
 export interface SignupData {
   name: string;
   email: string;
-  password?: string; // Password won't be stored directly in mock, but needed for API call
+  password: string; // Password is now required for signup
 }
 
 const LOCAL_STORAGE_USERS_KEY = 'cottonCareUsers';
@@ -40,6 +41,7 @@ const MOCK_USERS_SEED_DATA: User[] = [
       state: 'SYS',
       zip: '00001',
     },
+    mockPassword: 'password', // Seeded admin user password
   },
   {
     id: 'user002',
@@ -54,6 +56,7 @@ const MOCK_USERS_SEED_DATA: User[] = [
       state: 'TX',
       zip: '75001',
     },
+    mockPassword: 'password', // Seeded regular user password
   },
 ];
 
@@ -92,14 +95,16 @@ function saveUsersToLocalStorage(users: User[]): void {
   }
 }
 
-export async function login(email: string, password // Simulate password check (in real app, this is hashed)
-: string): Promise<User | null> {
+export async function login(email: string, password: string): Promise<User | null> {
   await delay(500);
   const users = getUsersFromLocalStorage();
   const user = users.find(u => u.email === email);
-  // In a real app, you'd verify the password against a hash
-  if (user && password === 'password') { // For mock purposes, 'password' is the valid password for existing users
-    return user;
+  
+  // Check against the user's specific mockPassword
+  if (user && user.mockPassword && password === user.mockPassword) {
+    // For this mock, we return the full user object as stored (including mockPassword)
+    // In a real app, you'd never return the password or its hash.
+    return user; 
   }
   return null;
 }
@@ -108,6 +113,7 @@ export async function getUserById(userId: string): Promise<User | null> {
   await delay(200);
   const users = getUsersFromLocalStorage();
   const user = users.find(u => u.id === userId);
+  // Return the full user object as stored
   return user || null;
 }
 
@@ -116,22 +122,23 @@ export async function signup(signupData: SignupData): Promise<User | null> {
   let users = getUsersFromLocalStorage();
   const existingUser = users.find(u => u.email === signupData.email);
   if (existingUser) {
-    // In a real API, this would likely be a 409 Conflict or similar error
     console.warn(`Signup attempt for existing email: ${signupData.email}`);
     return null; 
   }
 
+  // Password is required by SignupData interface now
   const newUser: User = {
     id: `user${Math.random().toString(36).substring(2, 8)}`,
     email: signupData.email,
     name: signupData.name,
-    isAdmin: false, // New users are not admins by default
-    avatarUrl: `https://picsum.photos/seed/${signupData.email}/100/100`, // Generate consistent avatar based on email
-    // phone and address can be added later via profile edit
+    isAdmin: false, 
+    avatarUrl: `https://picsum.photos/seed/${signupData.email}/100/100`,
+    mockPassword: signupData.password, // Store the provided password
   };
 
   users.push(newUser);
   saveUsersToLocalStorage(users);
-  console.log("Local Storage: Signed up new user", newUser);
+  console.log("Local Storage: Signed up new user", newUser.email);
+  // Return the full user object as stored
   return newUser;
 }
