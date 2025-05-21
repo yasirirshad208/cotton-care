@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -12,58 +13,10 @@ import { History, Package, CalendarDays, Truck, Receipt } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns'; 
 import { AuthenticatedRouteGuard } from '@/components/auth/authenticated-route-guard';
+import type { Order, OrderItem } from '@/services/order-api'; // Import Order and OrderItem types
+import { useToast } from '@/hooks/use-toast';
 
-// Mock order data - Replace with actual API call/data fetching
-interface OrderItem {
-  productId: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image: string;
-}
-
-interface Order {
-  id: string;
-  orderDate: string; // ISO string format
-  status: 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
-  total: number;
-  items: OrderItem[];
-  shippingAddress: string; // Simple string for now
-}
-
-const MOCK_ORDERS: Order[] = [
-  {
-    id: 'ORD12345',
-    orderDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-    status: 'Shipped',
-    total: 57.97, // (15.99 * 2) + 18.00 + 7.99 shipping
-    items: [
-      { productId: 'prod1', name: 'Neem Oil Spray', price: 15.99, quantity: 2, image: 'https://picsum.photos/100/100?random=1' },
-      { productId: 'prod3', name: 'Copper Fungicide', price: 18.00, quantity: 1, image: 'https://picsum.photos/100/100?random=5' },
-    ],
-     shippingAddress: '123 Cotton Row, Farmville, TX 75001',
-  },
-  {
-    id: 'ORD67890',
-    orderDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week ago
-    status: 'Delivered',
-    total: 22.50, // 22.50 + 0 shipping
-    items: [
-      { productId: 'prod2', name: 'Bacillus Thuringiensis (Bt)', price: 22.50, quantity: 1, image: 'https://picsum.photos/100/100?random=3' },
-    ],
-     shippingAddress: '456 Planters Ln, Cottontown, GA 30303',
-  },
-   {
-    id: 'ORD11223',
-    orderDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-    status: 'Processing',
-    total: 12.99 + 7.99,
-    items: [
-       { productId: 'prod5', name: 'Insecticidal Soap', price: 12.99, quantity: 1, image: 'https://picsum.photos/100/100?random=9' },
-    ],
-     shippingAddress: '123 Cotton Row, Farmville, TX 75001',
-  },
-];
+const LOCAL_STORAGE_ORDERS_KEY = 'cottonCareOrders';
 
 const getStatusBadgeVariant = (status: Order['status']): "default" | "secondary" | "outline" | "destructive" => {
   switch (status) {
@@ -84,15 +37,29 @@ const getStatusBadgeVariant = (status: Order['status']): "default" | "secondary"
 function OrderHistoryPageContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Simulate fetching orders
-    const timer = setTimeout(() => {
-      setOrders(MOCK_ORDERS);
+    setIsLoading(true);
+    try {
+      const storedOrders = localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY);
+      if (storedOrders) {
+        setOrders(JSON.parse(storedOrders));
+      } else {
+        setOrders([]); // No orders found
+      }
+    } catch (error) {
+      console.error("Failed to load orders from local storage:", error);
+      toast({
+        title: "Error Loading Orders",
+        description: "Could not retrieve your order history.",
+        variant: "destructive"
+      });
+      setOrders([]); // Set to empty on error
+    } finally {
       setIsLoading(false);
-    }, 700); // Simulate network delay
-    return () => clearTimeout(timer);
-  }, []);
+    }
+  }, [toast]);
 
 
   if (isLoading) {
@@ -160,16 +127,17 @@ function OrderHistoryPageContent() {
                            </TableRow>
                          </TableHeader>
                          <TableBody>
-                           {order.items.map((item) => (
+                           {order.items.map((item: OrderItem) => ( // Use imported OrderItem
                              <TableRow key={item.productId}>
                                <TableCell>
                                  <Image
-                                   src={item.image}
+                                   src={item.image || 'https://placehold.co/40x40.png'} // Provide fallback for image
                                    alt={item.name}
                                    width={40}
                                    height={40}
                                    className="rounded object-cover aspect-square"
                                    data-ai-hint="product thumbnail order history"
+                                   unoptimized={item.image?.startsWith('https://placehold.co')}
                                  />
                                </TableCell>
                                <TableCell>
@@ -186,11 +154,18 @@ function OrderHistoryPageContent() {
                    </div>
                    <div>
                       <h4 className="font-semibold mb-1">Shipping Address:</h4>
-                      <p className="text-sm text-muted-foreground">{order.shippingAddress}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {order.shippingAddress.fullName}<br />
+                        {order.shippingAddress.addressLine1}<br />
+                        {order.shippingAddress.addressLine2 && <>{order.shippingAddress.addressLine2}<br /></>}
+                        {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}<br />
+                        {order.shippingAddress.phoneNumber}
+                      </p>
                    </div>
                     <div className="flex justify-end gap-2 mt-4">
                        <Button variant="outline" size="sm">View Invoice</Button>
-                       {order.status === 'Processing' && <Button variant="destructive" size="sm">Cancel Order</Button>}
+                       {/* Cancel order logic would typically involve an API call to update status in a real backend */}
+                       {order.status === 'Processing' && <Button variant="destructive" size="sm" disabled>Cancel Order</Button>}
                    </div>
                  </div>
               </AccordionContent>
@@ -209,3 +184,4 @@ export default function OrderHistoryPage() {
     </AuthenticatedRouteGuard>
   );
 }
+

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -20,8 +21,10 @@ import Link from 'next/link';
 import { AuthenticatedRouteGuard } from '@/components/auth/authenticated-route-guard';
 import { useCartContext } from '@/contexts/cart-context'; // Import cart context
 import { useAuth } from '@/contexts/auth-context'; // Import auth context for user details
-import type { PlaceOrderInput } from '@/services/order-api'; // Import PlaceOrderInput
+import type { PlaceOrderInput, Order } from '@/services/order-api'; // Import PlaceOrderInput and Order
 import { placeOrder as apiPlaceOrder } from '@/services/order-api'; // Import placeOrder API
+
+const LOCAL_STORAGE_ORDERS_KEY = 'cottonCareOrders';
 
 const addressSchema = z.object({
   fullName: z.string().min(2, 'Full name is required'),
@@ -131,7 +134,22 @@ function CheckoutPageContent() {
     };
 
     try {
-        await apiPlaceOrder(orderInput); // Call the actual API service
+        const newOrder = await apiPlaceOrder(orderInput); // Call the actual API service
+        
+        // Save order to local storage
+        try {
+          const existingOrdersString = localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY);
+          const existingOrders: Order[] = existingOrdersString ? JSON.parse(existingOrdersString) : [];
+          existingOrders.unshift(newOrder); // Add new order to the beginning
+          localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(existingOrders));
+        } catch (storageError) {
+          console.error("Failed to save order to local storage:", storageError);
+          toast({
+            title: "Local Storage Error",
+            description: "Your order was placed, but could not be saved to your local history.",
+            variant: "default" // Not destructive, as order itself is placed
+          });
+        }
         
         setIsOrderPlaced(true);
         clearCart(); // Clear cart from local storage
@@ -354,3 +372,4 @@ export default function CheckoutPage() {
     </AuthenticatedRouteGuard>
   );
 }
+
