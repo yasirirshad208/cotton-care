@@ -33,16 +33,17 @@ export function useCart() {
       }
     } catch (error) {
       console.error("Failed to load cart from localStorage:", error);
-      toast({
-        title: "Error loading cart",
-        description: "There was an issue loading your cart from storage.",
-        variant: "destructive",
-      });
-      // Optionally clear corrupted cart data
-      // localStorage.removeItem(LOCAL_STORAGE_CART_KEY);
+      setTimeout(() => {
+        toast({
+          title: "Error loading cart",
+          description: "There was an issue loading your cart from storage.",
+          variant: "destructive",
+        });
+      }, 0);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }, [toast]);
+  }, []); // Empty dependency array, runs once on mount. toast is stable.
 
   // Save cart to localStorage whenever it changes, after initial load
   useEffect(() => {
@@ -51,14 +52,16 @@ export function useCart() {
         localStorage.setItem(LOCAL_STORAGE_CART_KEY, JSON.stringify(cartItems));
       } catch (error) {
         console.error("Failed to save cart to localStorage:", error);
-        toast({
-          title: "Error saving cart",
-          description: "Could not save your cart changes to storage.",
-          variant: "destructive",
-        });
+        setTimeout(() => {
+          toast({
+            title: "Error saving cart",
+            description: "Could not save your cart changes to storage.",
+            variant: "destructive",
+          });
+        }, 0);
       }
     }
-  }, [cartItems, isLoading, toast]);
+  }, [cartItems, isLoading]); // Dependencies: cartItems, isLoading. toast is stable.
 
   const addItem = useCallback((product: ProductDetailsForCart, quantityToAdd: number = 1) => {
     if (quantityToAdd <= 0) return;
@@ -97,7 +100,7 @@ export function useCart() {
         return [...prevItems, { ...product, quantity: quantityToAdd }];
       }
     });
-  }, [toast]);
+  }, [toast]); // toast dependency for useCallback is fine as toast function is stable
 
   const updateItemQuantity = useCallback((productId: string, newQuantity: number) => {
     setCartItems(prevItems => {
@@ -159,7 +162,7 @@ export function useCart() {
 
   return {
     cartItems,
-    isCartLoading: isLoading, // Renamed for clarity in context
+    isCartLoading: isLoading,
     addItem,
     updateItemQuantity,
     removeItem,
