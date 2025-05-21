@@ -30,7 +30,7 @@ export default function RootLayout({
           'min-h-screen bg-background font-sans antialiased',
           geistSans.variable
         )}
-        suppressHydrationWarning 
+        suppressHydrationWarning
       >
       <Suspense fallback={<div className="text-center md:mt-20 mt-12"><span className="loader"></span></div>}>
         <AuthProvider>
