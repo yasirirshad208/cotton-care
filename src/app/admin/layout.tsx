@@ -35,6 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <ShoppingCart className="h-4 w-4" /> Orders
         </Link>
       </Button>
+      {/*
       <Button variant="ghost" className="justify-start gap-2" asChild onClick={() => setIsSheetOpen(false)}>
         <Link href="/admin/analytics">
           <BarChart3 className="h-4 w-4" /> Analytics
@@ -50,6 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Settings className="h-4 w-4" /> Settings
         </Link>
       </Button>
+      */}
     </>
   );
 

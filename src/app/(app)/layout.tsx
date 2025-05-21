@@ -1,3 +1,4 @@
+
 'use client'; // Add this directive
 
 import React from 'react';
@@ -99,30 +100,6 @@ function AppLayoutContent({ children }: { children: React.ReactNode }) {
                     <Link href="/admin/orders">
                       <ShoppingCart />
                       <span>Manage Orders</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Admin: Users (Placeholder)">
-                    <Link href="/admin/users">
-                      <Users />
-                      <span>Manage Users</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Admin: Analytics (Placeholder)">
-                    <Link href="/admin/analytics">
-                      <LineChart />
-                      <span>Analytics</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Admin: Settings (Placeholder)">
-                    <Link href="/admin/settings">
-                      <SettingsIcon />
-                      <span>Admin Settings</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
