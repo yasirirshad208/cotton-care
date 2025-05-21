@@ -23,9 +23,10 @@ export interface SignupData {
   password?: string; // Password won't be stored directly in mock, but needed for API call
 }
 
+const LOCAL_STORAGE_USERS_KEY = 'cottonCareUsers';
 
-// Mock database of users
-const MOCK_USERS: User[] = [
+// Initial seed data if local storage is empty
+const MOCK_USERS_SEED_DATA: User[] = [
   {
     id: 'admin001',
     email: 'admin@example.com',
@@ -59,10 +60,43 @@ const MOCK_USERS: User[] = [
 // Simulate API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+function getUsersFromLocalStorage(): User[] {
+  if (typeof window === 'undefined') return [...MOCK_USERS_SEED_DATA]; // Fallback for SSR
+  try {
+    const storedUsers = localStorage.getItem(LOCAL_STORAGE_USERS_KEY);
+    if (storedUsers) {
+      return JSON.parse(storedUsers);
+    } else {
+      // Initialize local storage with seed data if it's empty
+      localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(MOCK_USERS_SEED_DATA));
+      return [...MOCK_USERS_SEED_DATA];
+    }
+  } catch (error) {
+    console.error("Error accessing localStorage for users:", error);
+    // Fallback to seed data on error and try to re-initialize localStorage
+    try {
+      localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(MOCK_USERS_SEED_DATA));
+    } catch (initError) {
+      console.error("Failed to re-initialize localStorage for users:", initError);
+    }
+    return [...MOCK_USERS_SEED_DATA];
+  }
+}
+
+function saveUsersToLocalStorage(users: User[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
+  } catch (error) {
+    console.error("Error saving users to localStorage:", error);
+  }
+}
+
 export async function login(email: string, password // Simulate password check (in real app, this is hashed)
 : string): Promise<User | null> {
   await delay(500);
-  const user = MOCK_USERS.find(u => u.email === email);
+  const users = getUsersFromLocalStorage();
+  const user = users.find(u => u.email === email);
   // In a real app, you'd verify the password against a hash
   if (user && password === 'password') { // For mock purposes, 'password' is the valid password for existing users
     return user;
@@ -72,13 +106,15 @@ export async function login(email: string, password // Simulate password check (
 
 export async function getUserById(userId: string): Promise<User | null> {
   await delay(200);
-  const user = MOCK_USERS.find(u => u.id === userId);
+  const users = getUsersFromLocalStorage();
+  const user = users.find(u => u.id === userId);
   return user || null;
 }
 
 export async function signup(signupData: SignupData): Promise<User | null> {
   await delay(700);
-  const existingUser = MOCK_USERS.find(u => u.email === signupData.email);
+  let users = getUsersFromLocalStorage();
+  const existingUser = users.find(u => u.email === signupData.email);
   if (existingUser) {
     // In a real API, this would likely be a 409 Conflict or similar error
     console.warn(`Signup attempt for existing email: ${signupData.email}`);
@@ -94,7 +130,8 @@ export async function signup(signupData: SignupData): Promise<User | null> {
     // phone and address can be added later via profile edit
   };
 
-  MOCK_USERS.push(newUser);
-  console.log("Mock API: Signed up new user", newUser);
+  users.push(newUser);
+  saveUsersToLocalStorage(users);
+  console.log("Local Storage: Signed up new user", newUser);
   return newUser;
 }
