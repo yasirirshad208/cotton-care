@@ -7,29 +7,25 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, ChevronLeft, ChevronRight, CheckCircle, XCircle, FlaskConical, Leaf } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
+import { useCartContext } from '@/contexts/cart-context';
+import type { ProductDetailsForCart } from '@/hooks/use-cart';
 
 // Mock product data - Replace with actual API call/data fetching
-const ALL_PRODUCTS = [
-  { id: 'prod1', name: 'Neem Oil Spray', description: 'Organic broad-spectrum insecticide and fungicide. Controls aphids, whiteflies, spider mites, and powdery mildew. Apply every 7-14 days as needed.', price: 15.99, images: ['https://picsum.photos/600/600?random=1', 'https://picsum.photos/600/600?random=2', 'https://picsum.photos/600/600?random=1a'], suitableFor: ['Aphids', 'Powdery mildew'], category: 'Organic', stock: 50 },
-  { id: 'prod2', name: 'Bacillus Thuringiensis (Bt)', description: 'Biological insecticide effective against caterpillars like armyworms. Harmless to beneficial insects. Mix with water and spray thoroughly.', price: 22.50, images: ['https://picsum.photos/600/600?random=3', 'https://picsum.photos/600/600?random=4'], suitableFor: ['Army worm'], category: 'Biological', stock: 30 },
-  { id: 'prod3', name: 'Copper Fungicide', description: 'Effective against bacterial and fungal diseases like blight and target spot. Provides protective barrier on plant surfaces.', price: 18.00, images: ['https://picsum.photos/600/600?random=5', 'https://picsum.photos/600/600?random=6', 'https://picsum.photos/600/600?random=5a', 'https://picsum.photos/600/600?random=5b'], suitableFor: ['Bacterial blight', 'Target spot', 'Cotton Boll Rot'], category: 'Chemical', stock: 100 },
-  { id: 'prod4', name: 'Systemic Fungicide X', description: 'Provides systemic protection against various fungal issues including powdery mildew and target spot. Absorbed by the plant.', price: 25.00, images: ['https://picsum.photos/600/600?random=7', 'https://picsum.photos/600/600?random=8'], suitableFor: ['Powdery mildew', 'Target spot'], category: 'Chemical', stock: 0 },
-  { id: 'prod5', name: 'Insecticidal Soap', description: 'Effective against soft-bodied insects like aphids. Works on contact. Must spray directly on pests.', price: 12.99, images: ['https://picsum.photos/600/600?random=9', 'https://picsum.photos/600/600?random=10'], suitableFor: ['Aphids'], category: 'Organic', stock: 75 },
-  { id: 'prod6', name: 'General Purpose Fertilizer', description: 'Balanced nutrients (e.g., 10-10-10) for overall plant health and vigor. Promotes strong growth.', price: 19.99, images: ['https://picsum.photos/600/600?random=11'], suitableFor: [], category: 'Fertilizer', stock: 150 },
+const ALL_PRODUCTS: ProductDetailsForCart[] = [ // Ensure this matches ProductDetailsForCart
+  { id: 'prod1', name: 'Neem Oil Spray', description: 'Organic broad-spectrum insecticide and fungicide. Controls aphids, whiteflies, spider mites, and powdery mildew. Apply every 7-14 days as needed.', price: 15.99, images: ['https://placehold.co/600x600.png', 'https://placehold.co/600x600.png', 'https://placehold.co/600x600.png'], suitableFor: ['Aphids', 'Powdery mildew'], category: 'Organic', stock: 50 },
+  { id: 'prod2', name: 'Bacillus Thuringiensis (Bt)', description: 'Biological insecticide effective against caterpillars like armyworms. Harmless to beneficial insects. Mix with water and spray thoroughly.', price: 22.50, images: ['https://placehold.co/600x600.png', 'https://placehold.co/600x600.png'], suitableFor: ['Army worm'], category: 'Biological', stock: 30 },
+  { id: 'prod3', name: 'Copper Fungicide', description: 'Effective against bacterial and fungal diseases like blight and target spot. Provides protective barrier on plant surfaces.', price: 18.00, images: ['https://placehold.co/600x600.png', 'https://placehold.co/600x600.png', 'https://placehold.co/600x600.png', 'https://placehold.co/600x600.png'], suitableFor: ['Bacterial blight', 'Target spot', 'Cotton Boll Rot'], category: 'Chemical', stock: 100 },
+  { id: 'prod4', name: 'Systemic Fungicide X', description: 'Provides systemic protection against various fungal issues including powdery mildew and target spot. Absorbed by the plant.', price: 25.00, images: ['https://placehold.co/600x600.png', 'https://placehold.co/600x600.png'], suitableFor: ['Powdery mildew', 'Target spot'], category: 'Chemical', stock: 0 },
+  { id: 'prod5', name: 'Insecticidal Soap', description: 'Effective against soft-bodied insects like aphids. Works on contact. Must spray directly on pests.', price: 12.99, images: ['https://placehold.co/600x600.png', 'https://placehold.co/600x600.png'], suitableFor: ['Aphids'], category: 'Organic', stock: 75 },
+  { id: 'prod6', name: 'General Purpose Fertilizer', description: 'Balanced nutrients (e.g., 10-10-10) for overall plant health and vigor. Promotes strong growth.', price: 19.99, images: ['https://placehold.co/600x600.png'], suitableFor: [], category: 'Fertilizer', stock: 150 },
 ];
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  images: string[];
+interface Product extends ProductDetailsForCart { // Extends ProductDetailsForCart from use-cart
+  images: string[]; // Already part of ProductDetailsForCart if it includes all necessary fields
   suitableFor: string[];
   category: string;
-  stock: number;
 }
 
 function ProductImageSlider({ images, productName }: { images: string[], productName: string }) {
@@ -53,25 +49,23 @@ function ProductImageSlider({ images, productName }: { images: string[], product
 
 
   if (!images || images.length === 0) {
-    return <Skeleton className="w-full h-64 md:h-96 rounded-lg bg-muted" />; // Placeholder if no images
+    return <Skeleton className="w-full h-64 md:h-96 rounded-lg bg-muted" />;
   }
 
   return (
     <div className="relative w-full h-64 md:h-96 group">
-       {/* Main Image */}
        <div className="relative w-full h-full overflow-hidden rounded-lg shadow-md">
            <Image
              src={images[currentIndex]}
              alt={`${productName} image ${currentIndex + 1}`}
-             layout="fill"
-             objectFit="contain" // Use contain to see the whole product
+             fill // Changed from layout="fill" to fill for Next 13+
+             style={{objectFit:"contain"}} // Changed from objectFit="contain"
              className="transition-opacity duration-500 ease-in-out"
-             key={currentIndex} // Add key for transition effect if needed
+             key={currentIndex}
              data-ai-hint="pesticide product detail"
+             unoptimized={images[currentIndex].startsWith('https://placehold.co')}
            />
         </div>
-
-      {/* Navigation Arrows */}
        {images.length > 1 && (
           <>
             <Button
@@ -92,8 +86,6 @@ function ProductImageSlider({ images, productName }: { images: string[], product
             </Button>
           </>
        )}
-
-       {/* Thumbnails/Dots */}
        {images.length > 1 && (
            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
                {images.map((_, slideIndex) => (
@@ -115,36 +107,39 @@ function ProductImageSlider({ images, productName }: { images: string[], product
 
 export default function ProductDetailPage({ params }: { params: { productId: string } }) {
   const { productId } = params;
-  const [product, setProduct] = useState<Product | null | undefined>(undefined); // undefined initially, null if not found
-  const { toast } = useToast();
+  const [product, setProduct] = useState<Product | null | undefined>(undefined);
+  const { addItem } = useCartContext();
 
   useEffect(() => {
-    // Simulate fetching product data
-    const foundProduct = ALL_PRODUCTS.find(p => p.id === productId);
+    const foundProduct = ALL_PRODUCTS.find(p => p.id === productId) as Product | undefined;
     const timer = setTimeout(() => {
-       setProduct(foundProduct || null); // Set to null if not found after "loading"
-    }, 300); // Short delay to simulate loading
+       setProduct(foundProduct || null); 
+    }, 300);
     return () => clearTimeout(timer);
   }, [productId]);
 
   const handleAddToCart = () => {
      if (!product) return;
-     // Add actual cart logic here
-     console.log(`Adding ${product.name} to cart`);
-     toast({
-        title: `${product.name} added to cart`,
-        description: `Price: $${product.price.toFixed(2)}`,
-        action: (
-           <Button variant="outline" size="sm" asChild>
-              <Link href="/cart">View Cart</Link>
-           </Button>
-         ),
-     });
+     // ProductDetailsForCart needs: id, name, price, image (first one), stock
+     const productDetails: ProductDetailsForCart = {
+       id: product.id,
+       name: product.name,
+       price: product.price,
+       image: product.images[0] || 'https://placehold.co/100x100.png', // Fallback image
+       stock: product.stock,
+       // These are not part of ProductDetailsForCart by default, but CartItem has them.
+       // addItem from useCart expects ProductDetailsForCart.
+       description: product.description, 
+       category: product.category,
+       suitableFor: product.suitableFor,
+       images: product.images
+     };
+     addItem(productDetails, 1);
+     // Toast is handled by addItem in useCart
    };
 
 
   if (product === undefined) {
-    // Loading state
     return (
       <div className="container mx-auto py-8 px-4 md:px-6">
         <Skeleton className="h-8 w-1/4 mb-4" />
@@ -164,7 +159,6 @@ export default function ProductDetailPage({ params }: { params: { productId: str
   }
 
   if (product === null) {
-    // Not found state
     return (
       <div className="container mx-auto py-16 px-4 md:px-6 text-center">
         <h1 className="text-3xl font-bold mb-4">Product Not Found</h1>
@@ -178,7 +172,6 @@ export default function ProductDetailPage({ params }: { params: { productId: str
     );
   }
 
-  // Product found state
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
        <Button variant="outline" size="sm" asChild className="mb-4">
@@ -188,25 +181,18 @@ export default function ProductDetailPage({ params }: { params: { productId: str
        </Button>
       <Card className="overflow-hidden shadow-lg">
         <div className="grid md:grid-cols-2 gap-6 lg:gap-10">
-          {/* Image Slider Column */}
           <div className="p-4 md:p-6 bg-muted/30 flex items-center justify-center">
              <ProductImageSlider images={product.images} productName={product.name} />
           </div>
-
-          {/* Details Column */}
           <div className="p-4 md:p-6 flex flex-col">
              <Badge variant="secondary" className="w-fit mb-2">{product.category}</Badge>
              <h1 className="text-3xl md:text-4xl font-bold mb-2">{product.name}</h1>
              <p className="text-2xl font-semibold text-primary mb-4">${product.price.toFixed(2)}</p>
-
              <Separator className="my-4" />
-
              <div className="mb-4">
                  <h3 className="text-lg font-semibold mb-1 flex items-center gap-1.5"> <Leaf className="h-5 w-5 text-primary"/> Description</h3>
                  <p className="text-muted-foreground text-sm">{product.description}</p>
              </div>
-
-
               {product.suitableFor.length > 0 && (
                  <div className="mb-4">
                      <h3 className="text-lg font-semibold mb-1 flex items-center gap-1.5"><FlaskConical className="h-5 w-5 text-accent"/> Suitable For</h3>
@@ -217,7 +203,6 @@ export default function ProductDetailPage({ params }: { params: { productId: str
                      </div>
                  </div>
               )}
-
               <div className="mb-6 mt-auto pt-4">
                  <div className="flex items-center gap-2 mb-4">
                    {product.stock > 0 ? (

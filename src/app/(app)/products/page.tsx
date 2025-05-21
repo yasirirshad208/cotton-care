@@ -9,43 +9,47 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Badge } from '@/components/ui/badge';
 import { ShoppingCart, FlaskConical } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCartContext } from '@/contexts/cart-context';
+import type { ProductDetailsForCart } from '@/hooks/use-cart';
+import { useEffect, useState } from 'react';
 
-// Mock product data - Replace with actual API call/data fetching
-const ALL_PRODUCTS = [
-  { id: 'prod1', name: 'Neem Oil Spray', description: 'Organic broad-spectrum insecticide and fungicide.', price: 15.99, images: ['https://picsum.photos/300/300?random=1', 'https://picsum.photos/300/300?random=2'], suitableFor: ['Aphids', 'Powdery mildew'], category: 'Organic', stock: 50 },
-  { id: 'prod2', name: 'Bacillus Thuringiensis (Bt)', description: 'Biological insecticide effective against caterpillars.', price: 22.50, images: ['https://picsum.photos/300/300?random=3', 'https://picsum.photos/300/300?random=4'], suitableFor: ['Army worm'], category: 'Biological', stock: 30 },
-  { id: 'prod3', name: 'Copper Fungicide', description: 'Effective against bacterial and fungal diseases.', price: 18.00, images: ['https://picsum.photos/300/300?random=5', 'https://picsum.photos/300/300?random=6'], suitableFor: ['Bacterial blight', 'Target spot', 'Cotton Boll Rot'], category: 'Chemical', stock: 100 },
-  { id: 'prod4', name: 'Systemic Fungicide X', description: 'Provides systemic protection against various fungal issues.', price: 25.00, images: ['https://picsum.photos/300/300?random=7', 'https://picsum.photos/300/300?random=8'], suitableFor: ['Powdery mildew', 'Target spot'], category: 'Chemical', stock: 0 }, // Out of stock example
-  { id: 'prod5', name: 'Insecticidal Soap', description: 'Effective against soft-bodied insects like aphids.', price: 12.99, images: ['https://picsum.photos/300/300?random=9', 'https://picsum.photos/300/300?random=10'], suitableFor: ['Aphids'], category: 'Organic', stock: 75 },
-   { id: 'prod6', name: 'General Purpose Fertilizer', description: 'Balanced nutrients for overall plant health.', price: 19.99, images: ['https://picsum.photos/300/300?random=11'], suitableFor: [], category: 'Fertilizer', stock: 150 }, // No specific disease
+
+// Mock product data - Should match ProductDetailsForCart structure for consistency
+const ALL_PRODUCTS: Product[] = [ // Product type defined below for this page context
+  { id: 'prod1', name: 'Neem Oil Spray', description: 'Organic broad-spectrum insecticide and fungicide.', price: 15.99, images: ['https://placehold.co/300x200.png', 'https://placehold.co/300x200.png'], suitableFor: ['Aphids', 'Powdery mildew'], category: 'Organic', stock: 50 },
+  { id: 'prod2', name: 'Bacillus Thuringiensis (Bt)', description: 'Biological insecticide effective against caterpillars.', price: 22.50, images: ['https://placehold.co/300x200.png', 'https://placehold.co/300x200.png'], suitableFor: ['Army worm'], category: 'Biological', stock: 30 },
+  { id: 'prod3', name: 'Copper Fungicide', description: 'Effective against bacterial and fungal diseases.', price: 18.00, images: ['https://placehold.co/300x200.png', 'https://placehold.co/300x200.png'], suitableFor: ['Bacterial blight', 'Target spot', 'Cotton Boll Rot'], category: 'Chemical', stock: 100 },
+  { id: 'prod4', name: 'Systemic Fungicide X', description: 'Provides systemic protection against various fungal issues.', price: 25.00, images: ['https://placehold.co/300x200.png', 'https://placehold.co/300x200.png'], suitableFor: ['Powdery mildew', 'Target spot'], category: 'Chemical', stock: 0 },
+  { id: 'prod5', name: 'Insecticidal Soap', description: 'Effective against soft-bodied insects like aphids.', price: 12.99, images: ['https://placehold.co/300x200.png', 'https://placehold.co/300x200.png'], suitableFor: ['Aphids'], category: 'Organic', stock: 75 },
+  { id: 'prod6', name: 'General Purpose Fertilizer', description: 'Balanced nutrients for overall plant health.', price: 19.99, images: ['https://placehold.co/300x200.png'], suitableFor: [], category: 'Fertilizer', stock: 150 },
 ];
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  images: string[];
+interface Product extends ProductDetailsForCart { // Use ProductDetailsForCart and add any other specific fields needed only by this page
+  images: string[]; // This is part of ProductDetailsForCart if it covers all necessary fields
   suitableFor: string[];
   category: string;
-  stock: number;
 }
 
 function ProductCard({ product }: { product: Product }) {
-  const { toast } = useToast(); // Assuming useToast is available globally or via context
+  const { addItem } = useCartContext();
 
    const handleAddToCart = () => {
-     // Add actual cart logic here
-     console.log(`Adding ${product.name} to cart`);
-     toast({
-        title: `${product.name} added to cart`,
-        description: `Price: $${product.price.toFixed(2)}`,
-        action: (
-           <Button variant="outline" size="sm" asChild>
-              <Link href="/cart">View Cart</Link>
-           </Button>
-         ),
-     });
+     // Construct the ProductDetailsForCart object for addItem
+     const productDetails: ProductDetailsForCart = {
+       id: product.id,
+       name: product.name,
+       price: product.price,
+       image: product.images[0] || 'https://placehold.co/100x100.png', // Fallback image
+       stock: product.stock,
+       // These are not part of ProductDetailsForCart by default, but CartItem has them.
+       // addItem from useCart expects ProductDetailsForCart.
+       description: product.description, 
+       category: product.category,
+       suitableFor: product.suitableFor,
+       images: product.images
+     };
+     addItem(productDetails, 1);
+     // Toast is handled by addItem in useCart
    };
 
 
@@ -57,9 +61,10 @@ function ProductCard({ product }: { product: Product }) {
                  src={product.images[0]}
                  alt={product.name}
                  width={300}
-                 height={200} // Adjust height as needed
-                 className="w-full h-48 object-cover" // Ensure image covers the area
+                 height={200} 
+                 className="w-full h-48 object-cover"
                  data-ai-hint={`${product.category} pesticide product`}
+                 unoptimized={product.images[0].startsWith('https://placehold.co')}
              />
          </Link>
         {product.stock === 0 && (
@@ -89,26 +94,23 @@ function ProductCard({ product }: { product: Product }) {
 function ProductsContent() {
   const searchParams = useSearchParams();
   const disease = searchParams.get('disease');
-  const [isLoading, setIsLoading] = useState(true); // Simulate loading
+  const [isLoading, setIsLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    // Simulate fetching data
     const timer = setTimeout(() => {
       let filteredProducts;
       if (disease) {
         filteredProducts = ALL_PRODUCTS.filter(p => p.suitableFor.includes(disease));
-         // If no specific products found for the disease, show all products as a fallback
          if (filteredProducts.length === 0) {
             filteredProducts = ALL_PRODUCTS;
-            // Optionally add a message indicating fallback?
          }
       } else {
         filteredProducts = ALL_PRODUCTS;
       }
       setProducts(filteredProducts);
       setIsLoading(false);
-    }, 500); // Simulate network delay
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [disease]);
@@ -160,7 +162,6 @@ function ProductsContent() {
            <p className="text-xl text-muted-foreground">
               {disease ? `No specific products found recommended for ${disease}. Showing all products.` : "No products available at the moment."}
            </p>
-           {/* Optionally show all products if filter yields none */}
             {!isLoading && disease && ALL_PRODUCTS.length > 0 && products.length === 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-8">
                     {ALL_PRODUCTS.map((product) => (
@@ -174,14 +175,9 @@ function ProductsContent() {
   );
 }
 
-// Need to import useToast and useEffect
-import { useToast } from "@/hooks/use-toast"
-import { useEffect, useState } from 'react';
-
 
 export default function ProductsPage() {
   return (
-    // Suspense boundary is important for useSearchParams
     <Suspense fallback={<ProductsLoadingSkeleton />}>
       <ProductsContent />
     </Suspense>

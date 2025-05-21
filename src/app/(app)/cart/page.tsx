@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -9,78 +9,24 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Trash2, ShoppingCart, CreditCard, Package } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AuthenticatedRouteGuard } from '@/components/auth/authenticated-route-guard';
-
-// Mock cart data - Replace with actual cart state management (e.g., Context, Zustand, Redux)
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image: string;
-  stock: number;
-}
-
-const MOCK_CART_ITEMS: CartItem[] = [
-   { id: 'prod1', name: 'Neem Oil Spray', price: 15.99, quantity: 2, image: 'https://picsum.photos/100/100?random=1', stock: 50 },
-   { id: 'prod3', name: 'Copper Fungicide', price: 18.00, quantity: 1, image: 'https://picsum.photos/100/100?random=5', stock: 100 },
-];
+import { useCartContext } from '@/contexts/cart-context';
 
 function CartPageContent() {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
+  const { 
+    cartItems, 
+    isCartLoading, 
+    updateItemQuantity, 
+    removeItem,
+    getCartSubtotal
+  } = useCartContext();
 
-   useEffect(() => {
-     // Simulate loading cart items
-     const timer = setTimeout(() => {
-       setCartItems(MOCK_CART_ITEMS); // Load mock data
-       setIsLoading(false);
-     }, 500);
-     return () => clearTimeout(timer);
-   }, []);
-
-   const updateQuantity = (id: string, newQuantity: number) => {
-      if (newQuantity < 1) return; // Prevent quantity less than 1
-      const item = cartItems.find(item => item.id === id);
-      if (item && newQuantity > item.stock) {
-          toast({
-              title: "Stock Limit Reached",
-              description: `Cannot add more than ${item.stock} units of ${item.name}.`,
-              variant: "destructive",
-          });
-          return; // Prevent exceeding stock
-      }
-
-     setCartItems(prevItems =>
-       prevItems.map(item =>
-         item.id === id ? { ...item, quantity: newQuantity } : item
-       )
-     );
-   };
-
-  const removeItem = (id: string) => {
-      const itemToRemove = cartItems.find(item => item.id === id);
-     setCartItems(prevItems => prevItems.filter(item => item.id !== id));
-      if (itemToRemove) {
-         toast({
-           title: `${itemToRemove.name} removed from cart.`,
-           variant: 'default',
-         });
-      }
-   };
-
-   const calculateSubtotal = () => {
-     return cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
-   };
-
-   const subtotal = calculateSubtotal();
+   const subtotal = getCartSubtotal();
    const shippingCost = subtotal > 50 || subtotal === 0 ? 0 : 7.99; // Example shipping logic
    const total = subtotal + shippingCost;
 
-   if (isLoading) {
+   if (isCartLoading) {
       return (
           <div className="container mx-auto py-8 px-4 md:px-6">
              <Skeleton className="h-8 w-1/3 mb-6" />
@@ -147,10 +93,10 @@ function CartPageContent() {
                           <TableCell className="text-center">
                             <Input
                               type="number"
-                              min="1"
-                              max={item.stock} // Set max based on stock
+                              min="1" // Handled by updateItemQuantity if goes to 0 or less
+                              max={item.stock} // Visually indicate max
                               value={item.quantity}
-                              onChange={(e) => updateQuantity(item.id, parseInt(e.target.value))}
+                              onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value))}
                               className="w-16 mx-auto h-8 text-center"
                             />
                              <p className="text-xs text-muted-foreground mt-1">Max: {item.stock}</p>
@@ -217,6 +163,8 @@ function CartPageContent() {
 
 
 export default function CartPage() {
+  // Cart itself can be viewed without login, but checkout requires it.
+  // If we want cart page to be authenticated, wrap CartPageContent with AuthenticatedRouteGuard
   return (
     <AuthenticatedRouteGuard>
       <CartPageContent />

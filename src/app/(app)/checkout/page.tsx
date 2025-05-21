@@ -11,18 +11,17 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { CreditCard, PackageCheck, Truck } from 'lucide-react';
+import { CreditCard, PackageCheck, Truck, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from 'next/link';
 import { AuthenticatedRouteGuard } from '@/components/auth/authenticated-route-guard';
-
-// Mock cart total - Replace with actual calculation from cart state
-const MOCK_SUBTOTAL = 33.99; // Example: (15.99 * 2) + 18.00
-const MOCK_SHIPPING_COST = 7.99;
-const MOCK_TOTAL = MOCK_SUBTOTAL + MOCK_SHIPPING_COST;
+import { useCartContext } from '@/contexts/cart-context'; // Import cart context
+import { useAuth } from '@/contexts/auth-context'; // Import auth context for user details
+import type { PlaceOrderInput } from '@/services/order-api'; // Import PlaceOrderInput
+import { placeOrder as apiPlaceOrder } from '@/services/order-api'; // Import placeOrder API
 
 const addressSchema = z.object({
   fullName: z.string().min(2, 'Full name is required'),
@@ -48,51 +47,127 @@ const FormSchema = z.object({
   shippingAddress: addressSchema,
   billingSameAsShipping: z.boolean().default(true),
   billingAddress: addressSchema.optional(),
-  paymentMethod: z.enum(['creditCard', 'paypal', 'googlePay'], {
+  paymentMethod: z.enum(['creditCard', 'paypal', 'googlePay'], { // Paypal and GooglePay are placeholders
       required_error: "You need to select a payment method.",
   }),
-  paymentDetails: paymentSchema, // Assuming CC is always the primary for now
+  paymentDetails: paymentSchema,
 }).refine(data => data.billingSameAsShipping || !!data.billingAddress, {
   message: 'Billing address is required if different from shipping',
-  path: ['billingAddress'], // Point error to the billing address section
+  path: ['billingAddress'],
 });
 
 
 function CheckoutPageContent() {
-  const [isLoading, setIsLoading] = useState(false); // Simulate loading/processing
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOrderPlaced, setIsOrderPlaced] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user for prefill and customerId
+  const { cartItems, getCartSubtotal, clearCart, isCartLoading } = useCartContext();
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
       billingSameAsShipping: true,
-       paymentMethod: 'creditCard', // Default selection
+      paymentMethod: 'creditCard',
+      shippingAddress: { // Prefill from user if available
+        fullName: user?.name || '',
+        addressLine1: user?.address?.line1 || '',
+        addressLine2: user?.address?.line2 || '',
+        city: user?.address?.city || '',
+        state: user?.address?.state || '',
+        zipCode: user?.address?.zip || '',
+        phoneNumber: user?.phone || '',
+      },
+      paymentDetails: {
+        nameOnCard: user?.name || '',
+        cardNumber: '',
+        expiryDate: '',
+        cvc: ''
+      }
     },
   });
 
    const billingSameAsShipping = form.watch('billingSameAsShipping');
 
-  const onSubmit: any = async (data:any) => {
-    setIsLoading(true);
-    console.log('Checkout Data:', data);
+  const subtotal = getCartSubtotal();
+  const shippingCost = subtotal > 50 || subtotal === 0 ? 0 : 7.99;
+  const total = subtotal + shippingCost;
 
-    // Simulate API call for order placement
-    await new Promise(resolve => setTimeout(resolve, 1500));
+  useEffect(() => {
+    // If cart is empty and not loading, redirect to products page or cart page
+    if (!isCartLoading && cartItems.length === 0 && !isOrderPlaced) {
+      toast({
+        title: "Your cart is empty",
+        description: "Please add items to your cart before proceeding to checkout.",
+        variant: "default"
+      });
+      router.push('/products');
+    }
+  }, [cartItems, isCartLoading, router, toast, isOrderPlaced]);
 
-    setIsLoading(false);
-    setIsOrderPlaced(true);
-    toast({
-      title: 'Order Placed Successfully!',
-      description: 'Thank you for your purchase. Your order is being processed.',
-      variant: 'default', 
-    });
+  const onSubmit = async (data: z.infer<typeof FormSchema>) => {
+    if (!user) {
+        toast({ title: "Authentication Error", description: "You must be logged in to place an order.", variant: "destructive"});
+        router.push('/login?redirect=/checkout');
+        return;
+    }
+    if (cartItems.length === 0) {
+        toast({ title: "Empty Cart", description: "Cannot place an order with an empty cart.", variant: "destructive"});
+        return;
+    }
 
-    setTimeout(() => {
-       router.push('/orders');
-    }, 2000);
+    setIsSubmitting(true);
+    
+    const orderInput: PlaceOrderInput = {
+        customerId: user.id,
+        items: cartItems.map(item => ({
+            productId: item.id,
+            price: item.price,
+            quantity: item.quantity,
+        })),
+        shippingAddress: data.billingSameAsShipping ? data.shippingAddress : data.billingAddress!,
+        total: total,
+    };
+
+    try {
+        await apiPlaceOrder(orderInput); // Call the actual API service
+        
+        setIsOrderPlaced(true);
+        clearCart(); // Clear cart from local storage
+        toast({
+          title: 'Order Placed Successfully!',
+          description: 'Thank you for your purchase. Your order is being processed.',
+          variant: 'default', 
+        });
+
+        setTimeout(() => {
+           router.push('/orders'); // Navigate to order history page
+        }, 2000);
+
+    } catch (error) {
+        console.error('Failed to place order:', error);
+        toast({ title: 'Order Placement Failed', description: 'There was an error placing your order. Please try again.', variant: 'destructive'});
+    } finally {
+        setIsSubmitting(false);
+    }
   };
+
+   if (isCartLoading) {
+     return (
+       <div className="container mx-auto py-8 px-4 md:px-6">
+         <Skeleton className="h-8 w-1/3 mb-6" />
+         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+           <div className="lg:col-span-2 space-y-6">
+             <Skeleton className="h-64 w-full" />
+             <Skeleton className="h-48 w-full" />
+             <Skeleton className="h-72 w-full" />
+           </div>
+           <Skeleton className="h-96 w-full" />
+         </div>
+       </div>
+     );
+   }
 
    if (isOrderPlaced) {
        return (
@@ -198,6 +273,7 @@ function CheckoutPageContent() {
                                 Credit Card
                               </FormLabel>
                             </FormItem>
+                            {/* Placeholder for other payment methods if implemented */}
                           </RadioGroup>
                         </FormControl>
                         <FormMessage />
@@ -223,34 +299,36 @@ function CheckoutPageContent() {
                 <CardTitle>Order Summary</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex justify-between text-sm text-muted-foreground">
-                   <span>Neem Oil Spray x 2</span>
-                   <span>${(15.99 * 2).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm text-muted-foreground">
-                   <span>Copper Fungicide x 1</span>
-                   <span>${(18.00 * 1).toFixed(2)}</span>
-                </div>
+                {cartItems.map(item => (
+                  <div key={item.id} className="flex justify-between text-sm text-muted-foreground">
+                     <span>{item.name} x {item.quantity}</span>
+                     <span>${(item.price * item.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
+                {cartItems.length === 0 && <p className="text-sm text-muted-foreground">Your cart is empty.</p>}
                 <Separator />
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>${MOCK_SUBTOTAL.toFixed(2)}</span>
+                  <span>${subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>
-                  <span>${MOCK_SHIPPING_COST.toFixed(2)}</span>
+                  <span>{shippingCost === 0 && subtotal > 0 ? 'Free' : (subtotal === 0 ? '$0.00' : `$${shippingCost.toFixed(2)}`)}</span>
                 </div>
+                {subtotal > 0 && subtotal <= 50 && (
+                   <p className="text-xs text-muted-foreground">Add ${ (50.01 - subtotal).toFixed(2) } more for free shipping.</p>
+                 )}
                 <Separator />
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>${MOCK_TOTAL.toFixed(2)}</span>
+                  <span>${total.toFixed(2)}</span>
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-                  {isLoading ? (
+                <Button type="submit" className="w-full" size="lg" disabled={isSubmitting || cartItems.length === 0}>
+                  {isSubmitting ? (
                      <>
-                        <CreditCard className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Processing...
                      </>
                   ) : (

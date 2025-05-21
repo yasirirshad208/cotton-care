@@ -4,7 +4,8 @@ import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { AuthProvider } from '@/contexts/auth-context'; // Import AuthProvider
+import { AuthProvider } from '@/contexts/auth-context';
+import { CartProvider } from '@/contexts/cart-context'; // Import CartProvider
 import { Suspense } from 'react';
 
 const geistSans = Geist({
@@ -29,14 +30,16 @@ export default function RootLayout({
           'min-h-screen bg-background font-sans antialiased',
           geistSans.variable
         )}
-        suppressHydrationWarning // It's okay to have this on body if you also have it on html
+        suppressHydrationWarning 
       >
       <Suspense fallback={<div className="text-center md:mt-20 mt-12"><span className="loader"></span></div>}>
-        <AuthProvider> {/* Wrap with AuthProvider */}
-          <SidebarProvider>
-            {children}
-          </SidebarProvider>
-          <Toaster />
+        <AuthProvider>
+          <CartProvider> {/* Wrap with CartProvider */}
+            <SidebarProvider>
+              {children}
+            </SidebarProvider>
+            <Toaster />
+          </CartProvider>
         </AuthProvider>
         </Suspense>
       </body>
