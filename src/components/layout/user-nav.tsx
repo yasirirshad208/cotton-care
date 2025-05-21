@@ -1,3 +1,4 @@
+
 // src/components/layout/user-nav.tsx
 'use client';
 
@@ -35,7 +36,12 @@ export default function UserNav({ iconOnly = false }: UserNavProps) {
 
   if (!user) {
     return (
-      <Button variant={iconOnly ? "ghost" : "outline"} size={iconOnly ? "icon" : "default"} asChild>
+      <Button
+        variant={iconOnly ? "ghost" : "ghost"} // Changed "outline" to "ghost" for the !iconOnly case
+        size={iconOnly ? "icon" : "default"}
+        className={cn(!iconOnly && "justify-start")} // Add justify-start if !iconOnly
+        asChild
+      >
         <Link href="/login">
           <LogIn className={iconOnly ? 'h-5 w-5' : 'mr-2 h-4 w-4'} />
           {!iconOnly && <span>Login</span>}
